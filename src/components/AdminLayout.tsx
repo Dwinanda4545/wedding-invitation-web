@@ -49,7 +49,9 @@ export function AdminLayout() {
             <button
               type="button"
               className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-50"
-              onClick={() => void logout().then(() => navigate('/login'))}
+              onClick={() => {
+                void logout().finally(() => navigate('/login', { replace: true }))
+              }}
             >
               Keluar
             </button>

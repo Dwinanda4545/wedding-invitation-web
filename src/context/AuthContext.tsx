@@ -52,9 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
-    await ensureCsrfCookie()
-    await api.post('/api/logout')
-    setUser(null)
+    try {
+      await ensureCsrfCookie()
+      await api.post('/api/logout')
+    } catch {
+      // Clear local session even if API/CSRF fails (common on shared hosting).
+    } finally {
+      setUser(null)
+    }
   }, [])
 
   const value = useMemo(
