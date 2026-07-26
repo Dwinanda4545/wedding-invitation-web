@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" fill="none">
+  <!-- upper wings -->
+  <path d="M80 60 Q 45 10 15 25 Q 0 40 20 60 Q 40 75 80 60Z" fill="currentColor" fill-opacity="0.35"/>
+  <path d="M80 60 Q 115 10 145 25 Q 160 40 140 60 Q 120 75 80 60Z" fill="currentColor" fill-opacity="0.35"/>
+  <!-- lower wings -->
+  <path d="M80 62 Q 40 65 25 85 Q 15 100 40 105 Q 62 108 80 62Z" fill="currentColor" fill-opacity="0.28"/>
+  <path d="M80 62 Q 120 65 135 85 Q 145 100 120 105 Q 98 108 80 62Z" fill="currentColor" fill-opacity="0.28"/>
+  <!-- wing pattern dots -->
+  <circle cx="45" cy="42" r="6" fill="currentColor" fill-opacity="0.2"/>
+  <circle cx="32" cy="52" r="4" fill="currentColor" fill-opacity="0.15"/>
+  <circle cx="115" cy="42" r="6" fill="currentColor" fill-opacity="0.2"/>
+  <circle cx="128" cy="52" r="4" fill="currentColor" fill-opacity="0.15"/>
+  <!-- body -->
+  <ellipse cx="80" cy="62" rx="4" ry="18" fill="currentColor" fill-opacity="0.55"/>
+  <!-- antennae -->
+  <path d="M78 45 Q 65 25 58 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.5" fill="none"/>
+  <circle cx="58" cy="15" r="3" fill="currentColor" fill-opacity="0.4"/>
+  <path d="M82 45 Q 95 25 102 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.5" fill="none"/>
+  <circle cx="102" cy="15" r="3" fill="currentColor" fill-opacity="0.4"/>
+</svg>

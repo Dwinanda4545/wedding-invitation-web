@@ -1,0 +1,477 @@
+.invitation-shell {
+  --inv-accent: #be185d;
+  --inv-accent-soft: #fce7f3;
+  --inv-text-muted: #9d174d;
+  --inv-mobile-width: 720px;
+  position: relative;
+}
+
+.inv-viewport-frame {
+  position: relative;
+  width: 100%;
+  min-height: inherit;
+}
+
+/* Mode mobile: kanvas tetap ~720px agar asset % sama dengan preview HP */
+.invitation-shell.inv-viewport-mobile {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  /* background letterbox di-set dari theme.pageBackground via inline style */
+}
+
+.invitation-shell.inv-viewport-mobile .inv-viewport-frame {
+  width: 100%;
+  max-width: var(--inv-mobile-width);
+  min-height: 100vh;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.invitation-shell.inv-viewport-mobile .inv-cover {
+  position: absolute;
+  inset: 0;
+}
+
+/* Preview di admin: isi penuh frame, cover tidak fixed ke viewport browser */
+.invitation-shell.is-preview {
+  min-height: 100%;
+  isolation: isolate;
+}
+
+.invitation-shell.is-preview .inv-cover {
+  position: absolute;
+}
+
+/* ── Decor layers ─────────────────────────────────────────── */
+/* Background SELALU di belakang konten */
+.inv-decor-bg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.inv-decor-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.inv-decor-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  pointer-events: none;
+}
+
+/* Asset ornamen di atas konten, tapi tidak memblokir interaksi kecuali mode edit */
+.inv-decor-assets-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.inv-decor-assets-layer.is-edit {
+  z-index: 20;
+}
+
+.inv-decor-asset {
+  position: absolute;
+  max-width: 40%;
+  pointer-events: none;
+  user-select: none;
+  touch-action: none;
+}
+
+.inv-decor-asset.is-draggable {
+  pointer-events: auto;
+  cursor: grab;
+  outline: 2px dashed rgba(255, 255, 255, 0.55);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.inv-decor-asset.is-draggable:hover {
+  outline-color: rgba(251, 191, 36, 0.9);
+}
+
+.inv-decor-asset.is-dragging {
+  cursor: grabbing;
+  outline-color: #fbbf24;
+  z-index: 50;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
+}
+
+.inv-decor-free {
+  transform: none !important;
+}
+
+/* slot presets */
+.inv-decor-tl { top: 0;    left: 0;   transform-origin: top left; }
+.inv-decor-tr { top: 0;    right: 0;  transform: scaleX(-1); transform-origin: top right; }
+.inv-decor-bl { bottom: 0; left: 0;   transform: scaleY(-1); transform-origin: bottom left; }
+.inv-decor-br { bottom: 0; right: 0;  transform: scale(-1,-1); transform-origin: bottom right; }
+.inv-decor-tc { top: 0;    left: 50%; transform: translateX(-50%); }
+.inv-decor-bc { bottom: 0; left: 50%; transform: translateX(-50%) scaleY(-1); }
+
+/* Konten di atas background, di bawah asset ornamen */
+.inv-content {
+  position: relative;
+  z-index: 1;
+}
+
+.inv-viewport-frame > *:not(.inv-decor-bg-layer):not(.inv-decor-assets-layer):not(.inv-cover) {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes inv-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes inv-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes inv-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes sakura-fall {
+  0% {
+    transform: translateY(-10vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.inv-animate-fade-up {
+  animation: inv-fade-up 0.8s ease both;
+}
+
+.inv-animate-fade-in {
+  animation: inv-fade-in 0.6s ease both;
+}
+
+.inv-animate-scale-in {
+  animation: inv-scale-in 0.7s ease both;
+}
+
+.inv-section {
+  padding: 3rem 1.25rem;
+}
+
+/* Background per section */
+.inv-section-bg-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.inv-section-bg-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.inv-section-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.inv-section-bg-content {
+  position: relative;
+  z-index: 1;
+}
+
+.inv-cover-bg-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.inv-cover-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.inv-cover > *:not(.inv-cover-bg-img):not(.inv-cover-bg-overlay) {
+  position: relative;
+  z-index: 1;
+}
+
+.inv-section-title {
+  font-family: inherit;
+  font-size: 1.75rem;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 2rem;
+  letter-spacing: 0.05em;
+}
+
+.inv-divider {
+  width: 60px;
+  height: 1px;
+  margin: 1rem auto;
+  background: currentColor;
+  opacity: 0.3;
+}
+
+.sakura-container {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  z-index: 30;
+}
+
+.sakura-petal {
+  position: absolute;
+  top: -5%;
+  width: 12px;
+  height: 12px;
+  background: radial-gradient(circle at 30% 30%, #fce7f3, #f472b6);
+  border-radius: 150% 0 150% 0;
+  opacity: 0.7;
+  animation: sakura-fall linear infinite;
+}
+
+.invitation-shell > .inv-cover,
+.inv-cover {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+
+.inv-cover.is-open {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.inv-cover-btn {
+  margin-top: 2rem;
+  padding: 0.75rem 2rem;
+  border-radius: 9999px;
+  border: 1px solid currentColor;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  font-size: 0.875rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.inv-cover-btn:hover {
+  transform: scale(1.05);
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.inv-countdown-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  max-width: 320px;
+  margin: 1.5rem auto 0;
+}
+
+.inv-countdown-item {
+  text-align: center;
+  padding: 0.75rem 0.5rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
+}
+
+.inv-countdown-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.inv-countdown-label {
+  font-size: 0.65rem;
+  margin-top: 0.25rem;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.inv-timeline {
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+.inv-timeline::before {
+  content: '';
+  position: absolute;
+  left: 0.35rem;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 2px;
+  background: currentColor;
+  opacity: 0.2;
+}
+
+.inv-timeline-item {
+  position: relative;
+  padding-bottom: 1.5rem;
+}
+
+.inv-timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -1.28rem;
+  top: 0.4rem;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--inv-accent, #be185d);
+}
+
+.inv-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.inv-gallery-item {
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.inv-gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.inv-wish-card {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(4px);
+  margin-bottom: 0.75rem;
+}
+
+.invitation-shell > .inv-music-control,
+.inv-music-control {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.inv-music-slider {
+  padding: 0.5rem 0.4rem;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inv-music-slider input[type='range'] {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 4px;
+  height: 72px;
+  cursor: pointer;
+  accent-color: #f472b6;
+}
+
+.inv-music-btn {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  transition: transform 0.2s ease;
+}
+
+.inv-music-btn:hover {
+  transform: scale(1.08);
+}
+
+.inv-music-btn.is-playing {
+  animation: inv-music-spin 6s linear infinite;
+}
+
+@keyframes inv-music-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

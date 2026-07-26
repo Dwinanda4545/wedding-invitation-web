@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 220" fill="none">
+  <!-- stems -->
+  <path d="M90 210 Q 75 170 60 130" stroke="#4a7c59" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
+  <path d="M90 210 Q 90 165 90 120" stroke="#4a7c59" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
+  <path d="M90 210 Q 105 170 120 130" stroke="#4a7c59" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
+  <!-- leaves -->
+  <ellipse cx="68" cy="155" rx="16" ry="7" fill="#6aad78" opacity="0.5" transform="rotate(-40 68 155)"/>
+  <ellipse cx="112" cy="155" rx="16" ry="7" fill="#6aad78" opacity="0.5" transform="rotate(40 112 155)"/>
+  <ellipse cx="78" cy="135" rx="14" ry="6" fill="#4a7c59" opacity="0.45" transform="rotate(-25 78 135)"/>
+  <ellipse cx="102" cy="132" rx="14" ry="6" fill="#4a7c59" opacity="0.45" transform="rotate(25 102 132)"/>
+  <!-- rose left -->
+  <g transform="translate(60,115)">
+    <circle cx="0" cy="0" r="18" fill="#f87171" opacity="0.3"/>
+    <circle cx="0" cy="0" r="14" fill="#ef4444" opacity="0.35"/>
+    <circle cx="0" cy="0" r="10" fill="#dc2626" opacity="0.4"/>
+    <circle cx="0" cy="0" r="6" fill="#b91c1c" opacity="0.6"/>
+    <circle cx="-5" cy="-5" r="8" fill="#ef4444" opacity="0.25"/>
+    <circle cx="5" cy="-6" r="7" fill="#f87171" opacity="0.2"/>
+  </g>
+  <!-- rose center -->
+  <g transform="translate(90,100)">
+    <circle cx="0" cy="0" r="20" fill="#fca5a5" opacity="0.3"/>
+    <circle cx="0" cy="0" r="16" fill="#f87171" opacity="0.35"/>
+    <circle cx="0" cy="0" r="12" fill="#ef4444" opacity="0.4"/>
+    <circle cx="0" cy="0" r="7"  fill="#dc2626" opacity="0.55"/>
+    <circle cx="-6" cy="-6" r="9" fill="#f87171" opacity="0.25"/>
+    <circle cx="6" cy="-7" r="8" fill="#fca5a5" opacity="0.2"/>
+  </g>
+  <!-- rose right -->
+  <g transform="translate(120,115)">
+    <circle cx="0" cy="0" r="17" fill="#fda4af" opacity="0.3"/>
+    <circle cx="0" cy="0" r="13" fill="#fb7185" opacity="0.35"/>
+    <circle cx="0" cy="0" r="9"  fill="#f43f5e" opacity="0.4"/>
+    <circle cx="0" cy="0" r="5.5" fill="#e11d48" opacity="0.6"/>
+    <circle cx="-4" cy="-4" r="7" fill="#fb7185" opacity="0.25"/>
+    <circle cx="4" cy="-5" r="6" fill="#fda4af" opacity="0.2"/>
+  </g>
+  <!-- small buds -->
+  <circle cx="48" cy="105" r="6"  fill="#fca5a5" opacity="0.4"/>
+  <circle cx="132" cy="105" r="5" fill="#fda4af" opacity="0.4"/>
+</svg>
