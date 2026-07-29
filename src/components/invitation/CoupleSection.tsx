@@ -22,7 +22,7 @@ function PersonCard({
   if (!hasContent) return null
 
   return (
-    <div className="flex-1 text-center">
+    <div className="mt-8 mb-8 flex-1 text-center">
       <p className="text-xs uppercase tracking-[0.2em] opacity-60">{label}</p>
       {person.photo_url && (
         <img
@@ -65,9 +65,9 @@ export function CoupleSection({ coupleInfo, tagColor }: Props) {
           {quote}
         </p>
       )}
-      <div className="flex flex-col items-center gap-8 md:flex-row md:items-start md:justify-center">
+      <div className="flex flex-col items-center gap-10">
         <PersonCard label="Mempelai Pria" person={coupleInfo.groom} side="groom" tagColor={tagColor} />
-        <p className="font-serif text-3xl opacity-40">&</p>
+        <p className="my-2 font-serif text-3xl opacity-40">&</p>
         <PersonCard label="Mempelai Wanita" person={coupleInfo.bride} side="bride" tagColor={tagColor} />
       </div>
     </section>

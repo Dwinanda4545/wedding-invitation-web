@@ -24,6 +24,105 @@ export type SectionVisibility = {
   qr?: boolean
 }
 
+export type BuiltinSectionKey = keyof SectionVisibility
+
+/** Section kustom (HTML) yang bisa ditambah dinamis di mode Multi-section */
+export type CustomSection = {
+  id: string
+  title: string
+  content: string
+  enabled: boolean
+  sort_order: number
+}
+
+export const BUILTIN_SECTION_KEYS: BuiltinSectionKey[] = [
+  'couple',
+  'schedule',
+  'love_story',
+  'gallery',
+  'wishes',
+  'hosts',
+  'qr',
+]
+
+export const BUILTIN_SECTION_LABELS: Record<BuiltinSectionKey, string> = {
+  couple: 'Mempelai',
+  schedule: 'Detail Acara',
+  love_story: 'Cerita Cinta',
+  gallery: 'Galeri',
+  wishes: 'Doa & Ucapan',
+  hosts: 'Turut Mengundang',
+  qr: 'QR Check-in',
+}
+
+export const DEFAULT_SECTION_ORDER: string[] = [...BUILTIN_SECTION_KEYS]
+
+export function customSectionOrderKey(id: string): string {
+  return `custom:${id}`
+}
+
+export function parseCustomSectionOrderKey(key: string): string | null {
+  return key.startsWith('custom:') ? key.slice('custom:'.length) : null
+}
+
+export function createCustomSection(
+  partial?: Partial<CustomSection>,
+): CustomSection {
+  const id =
+    partial?.id ??
+    (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `cs_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`)
+
+  return {
+    id,
+    title: partial?.title ?? 'Section baru',
+    content: partial?.content ?? '<p>Tulis konten section di sini.</p>',
+    enabled: partial?.enabled ?? true,
+    sort_order: partial?.sort_order ?? 0,
+  }
+}
+
+/**
+ * Urutan section final: built-in + custom.
+ * Menyisipkan custom baru sebelum QR jika belum ada di section_order.
+ */
+export function resolveSectionOrder(settings: InvitationSettings): string[] {
+  const customs = settings.custom_sections ?? []
+  const customKeys = new Set(customs.map((c) => customSectionOrderKey(c.id)))
+  const builtinSet = new Set<string>(BUILTIN_SECTION_KEYS)
+
+  let order =
+    settings.section_order && settings.section_order.length > 0
+      ? [...settings.section_order]
+      : [...DEFAULT_SECTION_ORDER]
+
+  order = order.filter(
+    (key) => builtinSet.has(key) || customKeys.has(key),
+  )
+
+  for (const key of BUILTIN_SECTION_KEYS) {
+    if (!order.includes(key)) {
+      const qrIdx = order.indexOf('qr')
+      if (qrIdx >= 0) order.splice(qrIdx, 0, key)
+      else order.push(key)
+    }
+  }
+
+  for (const custom of [...customs].sort(
+    (a, b) => a.sort_order - b.sort_order,
+  )) {
+    const key = customSectionOrderKey(custom.id)
+    if (!order.includes(key)) {
+      const qrIdx = order.indexOf('qr')
+      if (qrIdx >= 0) order.splice(qrIdx, 0, key)
+      else order.push(key)
+    }
+  }
+
+  return order
+}
+
 export type DecorSlot = 'tl' | 'tr' | 'bl' | 'br' | 'tc' | 'bc'
 
 export type DecorAsset = {
@@ -67,6 +166,13 @@ export type InvitationSettings = {
   music_url?: string
   music_volume?: number
   sections?: SectionVisibility
+  /** Section HTML kustom (mode Multi-section) */
+  custom_sections?: CustomSection[]
+  /**
+   * Urutan section: key built-in (`couple`, …) atau `custom:<id>`.
+   * Jika kosong, memakai urutan default + custom sebelum QR.
+   */
+  section_order?: string[]
   /** Background halaman penuh (opsional, di belakang semua section) */
   background_image_url?: string
   background_overlay?: number
@@ -153,6 +259,7 @@ export type InvitationGuestData = {
   secret_token?: string
   qr_code_url?: string | null
   is_attended?: boolean
+  scanned_at?: string | null
 }
 
 export type InvitationResponse = {
@@ -184,6 +291,8 @@ export const DEFAULT_INVITATION_SETTINGS: InvitationSettings = {
     hosts: true,
     qr: true,
   },
+  custom_sections: [],
+  section_order: [...DEFAULT_SECTION_ORDER],
   background_image_url: '',
   background_overlay: 0.25,
   section_backgrounds: {},
@@ -199,15 +308,24 @@ export const DEFAULT_HOSTS: HostsInfo = {
 export function mergeSettings(
   partial?: InvitationSettings | null,
 ): InvitationSettings {
-  return {
+  const merged: InvitationSettings = {
     ...DEFAULT_INVITATION_SETTINGS,
     ...partial,
     sections: {
       ...DEFAULT_INVITATION_SETTINGS.sections,
       ...partial?.sections,
     },
+    custom_sections: partial?.custom_sections ?? [],
+    section_order: partial?.section_order?.length
+      ? partial.section_order
+      : [...DEFAULT_SECTION_ORDER],
     decor_assets: partial?.decor_assets ?? [],
     section_backgrounds: partial?.section_backgrounds ?? {},
+  }
+
+  return {
+    ...merged,
+    section_order: resolveSectionOrder(merged),
   }
 }
 

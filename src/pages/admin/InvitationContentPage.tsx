@@ -18,7 +18,9 @@ import {
   themeQrCardStyle,
 } from '../../lib/invitationTemplates'
 import type {
+  BuiltinSectionKey,
   CoupleInfo,
+  CustomSection,
   EventSchedule,
   GalleryImage,
   HostsInfo,
@@ -26,12 +28,18 @@ import type {
   LoveStoryItem,
 } from '../../lib/invitationTypes'
 import {
+  BUILTIN_SECTION_KEYS,
+  BUILTIN_SECTION_LABELS,
   DEFAULT_COUPLE_INFO,
   DEFAULT_HOSTS,
   DEFAULT_INVITATION_SETTINGS,
+  createCustomSection,
+  customSectionOrderKey,
   mergeCoupleInfo,
   mergeHosts,
   mergeSettings,
+  parseCustomSectionOrderKey,
+  resolveSectionOrder,
 } from '../../lib/invitationTypes'
 import { api } from '../../lib/api'
 
@@ -500,7 +508,7 @@ export function InvitationContentPage() {
     }))
   }
 
-  function toggleSection(key: keyof NonNullable<InvitationSettings['sections']>) {
+  function toggleSection(key: BuiltinSectionKey) {
     setSettings((prev) => ({
       ...prev,
       sections: {
@@ -510,12 +518,70 @@ export function InvitationContentPage() {
     }))
   }
 
+  function moveSection(key: string, direction: -1 | 1) {
+    setSettings((prev) => {
+      const order = resolveSectionOrder(prev)
+      const index = order.indexOf(key)
+      const target = index + direction
+      if (index < 0 || target < 0 || target >= order.length) return prev
+      const next = [...order]
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return { ...prev, section_order: next }
+    })
+  }
+
+  function addCustomSection() {
+    setSettings((prev) => {
+      const section = createCustomSection({
+        sort_order: (prev.custom_sections?.length ?? 0) + 1,
+      })
+      const order = resolveSectionOrder(prev)
+      const qrIdx = order.indexOf('qr')
+      const nextOrder = [...order]
+      if (qrIdx >= 0) nextOrder.splice(qrIdx, 0, customSectionOrderKey(section.id))
+      else nextOrder.push(customSectionOrderKey(section.id))
+
+      return {
+        ...prev,
+        custom_sections: [...(prev.custom_sections ?? []), section],
+        section_order: nextOrder,
+      }
+    })
+  }
+
+  function updateCustomSection(
+    id: string,
+    patch: Partial<Pick<CustomSection, 'title' | 'content' | 'enabled'>>,
+  ) {
+    setSettings((prev) => ({
+      ...prev,
+      custom_sections: (prev.custom_sections ?? []).map((section) =>
+        section.id === id ? { ...section, ...patch } : section,
+      ),
+    }))
+  }
+
+  function removeCustomSection(id: string) {
+    setSettings((prev) => ({
+      ...prev,
+      custom_sections: (prev.custom_sections ?? []).filter((section) => section.id !== id),
+      section_order: resolveSectionOrder(prev).filter(
+        (key) => key !== customSectionOrderKey(id),
+      ),
+    }))
+  }
+
   function updateHostList(side: 'groom_side' | 'bride_side', text: string) {
     setHosts((prev) => ({
       ...prev,
       [side]: text.split('\n').map((l) => l.trim()).filter(Boolean),
     }))
   }
+
+  const sectionOrder = resolveSectionOrder(settings)
+  const customSectionMap = new Map(
+    (settings.custom_sections ?? []).map((section) => [section.id, section]),
+  )
 
   if (!Number.isFinite(eventId)) {
     return <div className="text-red-600">ID acara tidak valid.</div>
@@ -674,21 +740,152 @@ export function InvitationContentPage() {
             </div>
           </div>
 
-          <div>
-            <p className="text-xs font-medium text-stone-600">Tampilkan section</p>
-            <div className="mt-2 flex flex-wrap gap-3">
-              {(['couple', 'schedule', 'love_story', 'gallery', 'wishes', 'hosts', 'qr'] as const).map(
-                (key) => (
-                  <label key={key} className="flex items-center gap-2 text-sm capitalize">
-                    <input
-                      type="checkbox"
-                      checked={settings.sections?.[key] !== false}
-                      onChange={() => toggleSection(key)}
-                    />
-                    {key.replace('_', ' ')}
-                  </label>
-                ),
-              )}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-stone-600">Section undangan</p>
+                <p className="mt-1 text-xs text-stone-500">
+                  Aktifkan, urutkan, atau tambah section HTML kustom (mode Multi-section).
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={addCustomSection}
+                disabled={invitationMode !== 'sections'}
+                className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-100 disabled:opacity-50"
+              >
+                + Tambah section
+              </button>
+            </div>
+
+            {invitationMode !== 'sections' && (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Section dinamis hanya dipakai saat mode <strong>Multi-section</strong>.
+              </p>
+            )}
+
+            <div className="space-y-3">
+              {sectionOrder.map((key, index) => {
+                const customId = parseCustomSectionOrderKey(key)
+                const custom = customId ? customSectionMap.get(customId) : undefined
+
+                if (custom) {
+                  return (
+                    <div
+                      key={key}
+                      className="rounded-xl border border-stone-200 bg-stone-50 p-4"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-stone-800">
+                          <input
+                            type="checkbox"
+                            checked={custom.enabled !== false}
+                            onChange={(e) =>
+                              updateCustomSection(custom.id, {
+                                enabled: e.target.checked,
+                              })
+                            }
+                          />
+                          Section kustom
+                        </label>
+                        <span className="ml-auto flex gap-1">
+                          <button
+                            type="button"
+                            className="rounded border border-stone-200 bg-white px-2 py-1 text-xs disabled:opacity-40"
+                            disabled={index === 0}
+                            onClick={() => moveSection(key, -1)}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded border border-stone-200 bg-white px-2 py-1 text-xs disabled:opacity-40"
+                            disabled={index === sectionOrder.length - 1}
+                            onClick={() => moveSection(key, 1)}
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded border border-red-200 bg-white px-2 py-1 text-xs text-red-700"
+                            onClick={() => removeCustomSection(custom.id)}
+                          >
+                            Hapus
+                          </button>
+                        </span>
+                      </div>
+                      <div className="mt-3 grid gap-3">
+                        <div>
+                          <label className="text-xs font-medium text-stone-600">
+                            Judul
+                          </label>
+                          <input
+                            className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm"
+                            value={custom.title}
+                            onChange={(e) =>
+                              updateCustomSection(custom.id, {
+                                title: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-stone-600">
+                            Konten (HTML)
+                          </label>
+                          <textarea
+                            rows={4}
+                            className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 font-mono text-xs"
+                            value={custom.content}
+                            onChange={(e) =>
+                              updateCustomSection(custom.id, {
+                                content: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+
+                const builtinKey = key as BuiltinSectionKey
+                if (!BUILTIN_SECTION_KEYS.includes(builtinKey)) return null
+
+                return (
+                  <div
+                    key={key}
+                    className="flex flex-wrap items-center gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3"
+                  >
+                    <label className="flex items-center gap-2 text-sm text-stone-800">
+                      <input
+                        type="checkbox"
+                        checked={settings.sections?.[builtinKey] !== false}
+                        onChange={() => toggleSection(builtinKey)}
+                      />
+                      {BUILTIN_SECTION_LABELS[builtinKey]}
+                    </label>
+                    <span className="ml-auto flex gap-1">
+                      <button
+                        type="button"
+                        className="rounded border border-stone-200 px-2 py-1 text-xs disabled:opacity-40"
+                        disabled={index === 0}
+                        onClick={() => moveSection(key, -1)}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded border border-stone-200 px-2 py-1 text-xs disabled:opacity-40"
+                        disabled={index === sectionOrder.length - 1}
+                        onClick={() => moveSection(key, 1)}
+                      >
+                        ↓
+                      </button>
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           </div>
 

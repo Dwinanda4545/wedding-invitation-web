@@ -5,6 +5,8 @@ import {
   mergeCoupleInfo,
   mergeHosts,
   mergeSettings,
+  parseCustomSectionOrderKey,
+  resolveSectionOrder,
 } from '../../lib/invitationTypes'
 import {
   getInvitationTheme,
@@ -19,6 +21,7 @@ import { GallerySection } from './GallerySection'
 import { WishesSection } from './WishesSection'
 import { HostsSection } from './HostsSection'
 import { QrSection } from './QrSection'
+import { CustomSection } from './CustomSection'
 import { SakuraAnimation } from './SakuraAnimation'
 import { MusicPlayer, type MusicPlayerHandle } from './MusicPlayer'
 import { DecorLayers } from './DecorLayers'
@@ -61,6 +64,13 @@ export function SectionInvitation({
   const coupleInfo = mergeCoupleInfo(data.event.couple_info)
   const hosts = mergeHosts(data.event.hosts)
   const sections = settings.sections ?? {}
+  const customById = useMemo(() => {
+    const map = new Map(
+      (settings.custom_sections ?? []).map((section) => [section.id, section]),
+    )
+    return map
+  }, [settings.custom_sections])
+  const sectionOrder = resolveSectionOrder(settings)
   const viewportMode = settings.viewport_mode ?? 'existing'
   const isMobileViewport = viewportMode === 'mobile' && !previewMode
 
@@ -105,6 +115,97 @@ export function SectionInvitation({
   const coverStyle = isMobileViewport || previewMode
     ? { ...pageStyle, position: 'absolute' as const, inset: 0 }
     : pageStyle
+
+  function renderBuiltin(key: string) {
+    switch (key) {
+      case 'couple':
+        if (sections.couple === false) return null
+        return (
+          <SectionBackgroundShell key={key} sectionKey="couple" settings={settings}>
+            <div className="mx-auto max-w-lg">
+              <CoupleSection coupleInfo={coupleInfo} tagColor={theme.style.tagColor} />
+            </div>
+          </SectionBackgroundShell>
+        )
+      case 'schedule':
+        if (sections.schedule === false) return null
+        return (
+          <SectionBackgroundShell key={key} sectionKey="schedule" settings={settings}>
+            <div className="mx-auto max-w-lg">
+              <ScheduleSection
+                schedules={data.event.schedules ?? []}
+                fallbackDate={data.event.event_date}
+                fallbackLocation={data.event.location}
+                tagColor={theme.style.tagColor}
+              />
+            </div>
+          </SectionBackgroundShell>
+        )
+      case 'love_story':
+        if (sections.love_story === false) return null
+        return (
+          <SectionBackgroundShell key={key} sectionKey="love_story" settings={settings}>
+            <div className="mx-auto max-w-lg">
+              <LoveStorySection
+                stories={data.event.love_stories ?? []}
+                tagColor={theme.style.tagColor}
+              />
+            </div>
+          </SectionBackgroundShell>
+        )
+      case 'gallery':
+        if (sections.gallery === false) return null
+        return (
+          <SectionBackgroundShell key={key} sectionKey="gallery" settings={settings}>
+            <div className="mx-auto max-w-lg">
+              <GallerySection
+                images={data.event.gallery ?? []}
+                tagColor={theme.style.tagColor}
+              />
+            </div>
+          </SectionBackgroundShell>
+        )
+      case 'wishes':
+        if (sections.wishes === false) return null
+        return (
+          <SectionBackgroundShell key={key} sectionKey="wishes" settings={settings}>
+            <div className="mx-auto max-w-lg">
+              <WishesSection
+                secretToken={secretToken}
+                guestName={data.guest.name}
+                wishes={wishes}
+                onWishAdded={handleWishAdded}
+                tagColor={theme.style.tagColor}
+              />
+            </div>
+          </SectionBackgroundShell>
+        )
+      case 'hosts':
+        if (sections.hosts === false) return null
+        return (
+          <SectionBackgroundShell key={key} sectionKey="hosts" settings={settings}>
+            <div className="mx-auto max-w-lg">
+              <HostsSection hosts={hosts} tagColor={theme.style.tagColor} />
+            </div>
+          </SectionBackgroundShell>
+        )
+      case 'qr':
+        if (sections.qr === false) return null
+        return (
+          <SectionBackgroundShell key={key} sectionKey="qr" settings={settings}>
+            <div className="mx-auto max-w-lg">
+              <QrSection
+                qrCodeUrl={data.guest.qr_code_url}
+                isAttended={Boolean(data.guest.is_attended)}
+                theme={theme}
+              />
+            </div>
+          </SectionBackgroundShell>
+        )
+      default:
+        return null
+    }
+  }
 
   return (
     <div
@@ -157,78 +258,19 @@ export function SectionInvitation({
             </div>
           </SectionBackgroundShell>
 
-          {sections.couple !== false && (
-            <SectionBackgroundShell sectionKey="couple" settings={settings}>
-              <div className="mx-auto max-w-lg">
-                <CoupleSection coupleInfo={coupleInfo} tagColor={theme.style.tagColor} />
-              </div>
-            </SectionBackgroundShell>
-          )}
-
-          {sections.schedule !== false && (
-            <SectionBackgroundShell sectionKey="schedule" settings={settings}>
-              <div className="mx-auto max-w-lg">
-                <ScheduleSection
-                  schedules={data.event.schedules ?? []}
-                  fallbackDate={data.event.event_date}
-                  fallbackLocation={data.event.location}
-                  tagColor={theme.style.tagColor}
-                />
-              </div>
-            </SectionBackgroundShell>
-          )}
-
-          {sections.love_story !== false && (
-            <SectionBackgroundShell sectionKey="love_story" settings={settings}>
-              <div className="mx-auto max-w-lg">
-                <LoveStorySection
-                  stories={data.event.love_stories ?? []}
-                  tagColor={theme.style.tagColor}
-                />
-              </div>
-            </SectionBackgroundShell>
-          )}
-
-          {sections.gallery !== false && (
-            <SectionBackgroundShell sectionKey="gallery" settings={settings}>
-              <div className="mx-auto max-w-lg">
-                <GallerySection
-                  images={data.event.gallery ?? []}
-                  tagColor={theme.style.tagColor}
-                />
-              </div>
-            </SectionBackgroundShell>
-          )}
-
-          {sections.wishes !== false && (
-            <SectionBackgroundShell sectionKey="wishes" settings={settings}>
-              <div className="mx-auto max-w-lg">
-                <WishesSection
-                  secretToken={secretToken}
-                  guestName={data.guest.name}
-                  wishes={wishes}
-                  onWishAdded={handleWishAdded}
-                  tagColor={theme.style.tagColor}
-                />
-              </div>
-            </SectionBackgroundShell>
-          )}
-
-          {sections.hosts !== false && (
-            <SectionBackgroundShell sectionKey="hosts" settings={settings}>
-              <div className="mx-auto max-w-lg">
-                <HostsSection hosts={hosts} tagColor={theme.style.tagColor} />
-              </div>
-            </SectionBackgroundShell>
-          )}
-
-          {sections.qr !== false && (
-            <SectionBackgroundShell sectionKey="qr" settings={settings}>
-              <div className="mx-auto max-w-lg">
-                <QrSection qrCodeUrl={data.guest.qr_code_url} theme={theme} />
-              </div>
-            </SectionBackgroundShell>
-          )}
+          {sectionOrder.map((key) => {
+            const customId = parseCustomSectionOrderKey(key)
+            if (customId) {
+              const custom = customById.get(customId)
+              if (!custom || custom.enabled === false) return null
+              return (
+                <div key={key} className="mx-auto max-w-lg">
+                  <CustomSection section={custom} tagColor={theme.style.tagColor} />
+                </div>
+              )
+            }
+            return renderBuiltin(key)
+          })}
 
           <footer className="pb-12 pt-4 text-center text-xs opacity-40">
             Undangan Digital
