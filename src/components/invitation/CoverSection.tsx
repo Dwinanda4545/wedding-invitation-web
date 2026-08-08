@@ -32,14 +32,31 @@ export function CoverSection({
     typeof coverBg?.min_height_px === 'number' && coverBg.min_height_px > 0
       ? coverBg.min_height_px
       : undefined
+  const lineHeight =
+    typeof coverBg?.line_height === 'number' && coverBg.line_height > 0
+      ? coverBg.line_height
+      : undefined
 
   return (
     <div
-      className={['inv-cover', isOpen ? 'is-open' : ''].join(' ')}
+      className={[
+        'inv-cover',
+        isOpen ? 'is-open' : '',
+        lineHeight ? 'inv-section-line-spaced' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       style={{
         ...style,
         ...(minHeight ? { minHeight } : {}),
+        ...(lineHeight
+          ? ({
+              lineHeight,
+              ['--inv-section-line-height' as string]: String(lineHeight),
+            } as React.CSSProperties)
+          : {}),
       }}
+      data-inv-line-height={lineHeight || undefined}
     >
       {bgUrl && (
         <>

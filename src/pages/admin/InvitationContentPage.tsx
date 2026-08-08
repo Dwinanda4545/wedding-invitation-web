@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify'
+import axios from 'axios'
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { DecorEditorPanel } from './DecorEditorPanel'
@@ -488,6 +489,15 @@ export function InvitationContentPage() {
 
   async function uploadMusic(file: File | null) {
     if (!file || !Number.isFinite(eventId)) return
+
+    const maxBytes = 10 * 1024 * 1024
+    if (file.size > maxBytes) {
+      setError(
+        `Ukuran file ${(file.size / (1024 * 1024)).toFixed(1)}MB melebihi batas 10MB.`,
+      )
+      return
+    }
+
     setUploadingMusic(true)
     setError(null)
     const fd = new FormData()
@@ -500,8 +510,15 @@ export function InvitationContentPage() {
       )
       setSettings((s) => ({ ...s, music_url: data.data.url, music_enabled: true }))
       showToast('Musik diunggah. Jangan lupa klik "Simpan pengaturan".')
-    } catch {
-      setError('Gagal mengunggah musik. Pastikan format MP3/WAV/OGG dan ukuran ≤ 10MB.')
+    } catch (e) {
+      const apiMessage = axios.isAxiosError(e)
+        ? (e.response?.data?.errors?.file?.[0] as string | undefined) ||
+          (e.response?.data?.message as string | undefined)
+        : undefined
+      setError(
+        apiMessage ||
+          'Gagal mengunggah musik. Pastikan format MP3/WAV/OGG/M4A dan ukuran ≤ 10MB.',
+      )
     } finally {
       setUploadingMusic(false)
     }

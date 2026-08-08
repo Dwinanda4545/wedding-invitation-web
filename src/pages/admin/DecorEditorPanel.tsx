@@ -147,12 +147,18 @@ export function DecorEditorPanel({
 
   function updateSectionBg(
     key: SectionBgKey,
-    patch: { image_url?: string; overlay?: number; min_height_px?: number },
+    patch: {
+      image_url?: string
+      overlay?: number
+      min_height_px?: number
+      line_height?: number
+    },
   ) {
     const next = { ...sectionBgs[key], ...patch }
     const hasImage = Boolean(next.image_url?.trim())
     const hasHeight = typeof next.min_height_px === 'number' && next.min_height_px > 0
-    if (!hasImage && !hasHeight) {
+    const hasLineHeight = typeof next.line_height === 'number' && next.line_height > 0
+    if (!hasImage && !hasHeight && !hasLineHeight) {
       const rest = { ...sectionBgs }
       delete rest[key]
       onSettingsChange({ ...settings, section_backgrounds: rest })
@@ -160,6 +166,9 @@ export function DecorEditorPanel({
     }
     if (!hasImage) {
       delete next.image_url
+    }
+    if (!hasLineHeight) {
+      delete next.line_height
     }
     onSettingsChange({
       ...settings,
@@ -172,7 +181,9 @@ export function DecorEditorPanel({
     if (!current) return
     const hasHeight =
       typeof current.min_height_px === 'number' && current.min_height_px > 0
-    if (hasHeight) {
+    const hasLineHeight =
+      typeof current.line_height === 'number' && current.line_height > 0
+    if (hasHeight || hasLineHeight) {
       updateSectionBg(key, { image_url: '' })
       return
     }
@@ -312,9 +323,10 @@ export function DecorEditorPanel({
 
       {/* Background per section */}
       <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
-        <h3 className="font-semibold text-stone-900">Background & tinggi per Section</h3>
+        <h3 className="font-semibold text-stone-900">Background, tinggi & line spacing per Section</h3>
         <p className="mt-1 text-xs text-stone-500">
-          Atur gambar latar dan tinggi minimum tiap bagian undangan. Tinggi 0 = otomatis mengikuti konten.
+          Atur gambar latar, tinggi minimum, dan jarak baris (line spacing) tiap bagian undangan.
+          Tinggi 0 = otomatis mengikuti konten. Line spacing Default = mengikuti tema.
         </p>
         <input
           ref={sectionBgInputRef}
@@ -332,6 +344,7 @@ export function DecorEditorPanel({
             const bg = sectionBgs[key]
             const url = bg?.image_url?.trim()
             const heightPx = bg?.min_height_px ?? 0
+            const lineHeight = bg?.line_height ?? 0
             const uploading = uploadingSectionKey === key
             return (
               <div
@@ -398,6 +411,45 @@ export function DecorEditorPanel({
                           ].join(' ')}
                         >
                           {v === 0 ? 'Auto' : `${v}`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center justify-between text-[11px] text-stone-500">
+                      <span>Line spacing</span>
+                      <span className="font-medium text-stone-700">
+                        {lineHeight > 0 ? lineHeight.toFixed(1) : 'Default'}
+                      </span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="2.4"
+                      step="0.1"
+                      value={lineHeight}
+                      className="mt-1 w-full max-w-[260px] accent-rose-600"
+                      onChange={(e) =>
+                        updateSectionBg(key, {
+                          line_height: Number(e.target.value),
+                        })
+                      }
+                    />
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {[0, 1.2, 1.4, 1.6, 1.8, 2].map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => updateSectionBg(key, { line_height: v })}
+                          className={[
+                            'rounded-md border px-2 py-0.5 text-[10px] font-medium transition',
+                            Math.abs(lineHeight - v) < 0.05
+                              ? 'border-rose-300 bg-rose-50 text-rose-800'
+                              : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300',
+                          ].join(' ')}
+                        >
+                          {v === 0 ? 'Default' : v.toFixed(1)}
                         </button>
                       ))}
                     </div>

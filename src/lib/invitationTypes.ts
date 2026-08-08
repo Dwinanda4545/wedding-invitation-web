@@ -166,6 +166,8 @@ export type SectionBackground = {
   overlay?: number
   /** Tinggi minimum section (px). Kosong/0 = menyesuaikan konten */
   min_height_px?: number
+  /** Jarak baris konten section (CSS line-height), mis. 1.5 */
+  line_height?: number
 }
 
 /** Opsi carousel Splide untuk section Galeri */
@@ -440,12 +442,23 @@ export function getSectionBackground(
   if (!bg) return undefined
   const hasImage = Boolean(bg.image_url?.trim())
   const hasHeight = typeof bg.min_height_px === 'number' && bg.min_height_px > 0
-  if (!hasImage && !hasHeight) return undefined
+  const hasLineHeight = typeof bg.line_height === 'number' && bg.line_height > 0
+  if (!hasImage && !hasHeight && !hasLineHeight) return undefined
   return {
     image_url: bg.image_url,
     overlay: bg.overlay ?? 0.25,
     min_height_px: bg.min_height_px,
+    line_height: bg.line_height,
   }
+}
+
+export function getSectionLineHeight(
+  settings: InvitationSettings,
+  key: SectionBgKey,
+): number | undefined {
+  const value = settings.section_backgrounds?.[key]?.line_height
+  if (typeof value !== 'number' || value <= 0) return undefined
+  return value
 }
 
 export function mergeCoupleInfo(partial?: CoupleInfo | null): CoupleInfo {

@@ -194,6 +194,37 @@
   padding: 3rem 1.25rem;
 }
 
+/* Line spacing per section — override leading-* Tailwind di dalam section */
+.inv-section-line-spaced,
+.inv-section-line-spaced[data-inv-line-height] {
+  line-height: var(--inv-section-line-height) !important;
+}
+
+.inv-section-line-spaced :where(
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  li,
+  span,
+  a,
+  div,
+  label,
+  figcaption,
+  .inv-section-title,
+  .invitation-quote,
+  .invitation-quote.ck-content,
+  .invitation-quote.ck-content p,
+  .invitation-quote.ck-content h2,
+  .invitation-quote.ck-content h3,
+  .invitation-quote.ck-content h4
+) {
+  line-height: var(--inv-section-line-height) !important;
+}
+
 /* Background per section */
 .inv-section-bg-shell {
   position: relative;
