@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import type { InvitationWish } from '../../lib/invitationTypes'
 import { api } from '../../lib/api'
+import { SectionTitle } from './SectionTitle'
 
 type Props = {
   secretToken: string
@@ -8,6 +9,8 @@ type Props = {
   wishes: InvitationWish[]
   onWishAdded: (wish: InvitationWish) => void
   tagColor?: string
+  title?: string
+  showTitle?: boolean
 }
 
 export function WishesSection({
@@ -16,6 +19,8 @@ export function WishesSection({
   wishes,
   onWishAdded,
   tagColor,
+  title = 'Doa & Ucapan',
+  showTitle = true,
 }: Props) {
   const [name, setName] = useState(guestName)
   const [message, setMessage] = useState('')
@@ -53,9 +58,7 @@ export function WishesSection({
 
   return (
     <section className="inv-section inv-animate-fade-up">
-      <h2 className="inv-section-title" style={{ color: tagColor }}>
-        Doa & Ucapan
-      </h2>
+      <SectionTitle title={title} show={showTitle} tagColor={tagColor} />
 
       <form
         onSubmit={onSubmit}

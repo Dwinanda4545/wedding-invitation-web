@@ -1,8 +1,13 @@
 import type { CoupleInfo } from '../../lib/invitationTypes'
+import { hasRichText, sanitizeRichHtml } from '../../lib/richHtml'
+import { SectionTitle } from './SectionTitle'
+import './invitation.css'
 
 type Props = {
   coupleInfo: CoupleInfo
   tagColor?: string
+  title?: string
+  showTitle?: boolean
 }
 
 function PersonCard({
@@ -52,18 +57,25 @@ function PersonCard({
   )
 }
 
-export function CoupleSection({ coupleInfo, tagColor }: Props) {
-  const quote = coupleInfo.opening_quote?.trim()
+export function CoupleSection({
+  coupleInfo,
+  tagColor,
+  title = 'Mempelai',
+  showTitle = true,
+}: Props) {
+  const quote = coupleInfo.opening_quote
+  const showQuote = hasRichText(quote)
+  const quoteHtml = showQuote ? sanitizeRichHtml(quote ?? '') : ''
 
   return (
     <section className="inv-section inv-animate-fade-up">
-      <h2 className="inv-section-title" style={{ color: tagColor }}>
-        Mempelai
-      </h2>
-      {quote && (
-        <p className="mx-auto mb-8 max-w-md text-center text-sm italic opacity-80">
-          {quote}
-        </p>
+      <SectionTitle title={title} show={showTitle} tagColor={tagColor} />
+      {showQuote && (
+        <div
+          className="invitation-quote ck-content mx-auto mb-8 max-w-lg"
+          style={{ textAlign: 'initial' }}
+          dangerouslySetInnerHTML={{ __html: quoteHtml }}
+        />
       )}
       <div className="flex flex-col items-center gap-10">
         <PersonCard label="Mempelai Pria" person={coupleInfo.groom} side="groom" tagColor={tagColor} />

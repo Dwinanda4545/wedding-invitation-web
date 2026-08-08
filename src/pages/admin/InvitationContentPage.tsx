@@ -3,6 +3,9 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 import { Link, useParams } from 'react-router-dom'
 import { DecorEditorPanel } from './DecorEditorPanel'
 import { SectionInvitation } from '../../components/invitation/SectionInvitation'
+import { RichTextEditor } from '../../components/RichTextEditor'
+import { hasRichText, sanitizeRichHtml } from '../../lib/richHtml'
+import '../../components/invitation/invitation.css'
 import type { InvitationResponse } from '../../lib/invitationTypes'
 import {
   BUILTIN_TEMPLATES,
@@ -17,29 +20,36 @@ import {
   themePageStyle,
   themeQrCardStyle,
 } from '../../lib/invitationTemplates'
+import {
+  BUILTIN_SECTION_KEYS,
+  BUILTIN_SECTION_LABELS,
+  DEFAULT_COUPLE_INFO,
+  DEFAULT_GALLERY_SLIDER,
+  DEFAULT_HOSTS,
+  DEFAULT_INVITATION_SETTINGS,
+  GALLERY_SLIDER_THEME_LABELS,
+  GALLERY_SLIDER_TYPE_LABELS,
+  createCustomSection,
+  customSectionOrderKey,
+  mergeCoupleInfo,
+  mergeGallerySlider,
+  mergeHosts,
+  mergeSettings,
+  parseCustomSectionOrderKey,
+  resolveSectionOrder,
+} from '../../lib/invitationTypes'
 import type {
   BuiltinSectionKey,
   CoupleInfo,
   CustomSection,
   EventSchedule,
   GalleryImage,
+  GallerySliderSettings,
+  GallerySliderTheme,
+  GallerySliderType,
   HostsInfo,
   InvitationSettings,
   LoveStoryItem,
-} from '../../lib/invitationTypes'
-import {
-  BUILTIN_SECTION_KEYS,
-  BUILTIN_SECTION_LABELS,
-  DEFAULT_COUPLE_INFO,
-  DEFAULT_HOSTS,
-  DEFAULT_INVITATION_SETTINGS,
-  createCustomSection,
-  customSectionOrderKey,
-  mergeCoupleInfo,
-  mergeHosts,
-  mergeSettings,
-  parseCustomSectionOrderKey,
-  resolveSectionOrder,
 } from '../../lib/invitationTypes'
 import { api } from '../../lib/api'
 
@@ -551,13 +561,39 @@ export function InvitationContentPage() {
 
   function updateCustomSection(
     id: string,
-    patch: Partial<Pick<CustomSection, 'title' | 'content' | 'enabled'>>,
+    patch: Partial<Pick<CustomSection, 'title' | 'content' | 'enabled' | 'show_title'>>,
   ) {
     setSettings((prev) => ({
       ...prev,
       custom_sections: (prev.custom_sections ?? []).map((section) =>
         section.id === id ? { ...section, ...patch } : section,
       ),
+    }))
+  }
+
+  function updateBuiltinSectionTitle(
+    key: BuiltinSectionKey,
+    patch: { text?: string; show?: boolean },
+  ) {
+    setSettings((prev) => ({
+      ...prev,
+      section_titles: {
+        ...prev.section_titles,
+        [key]: {
+          ...prev.section_titles?.[key],
+          ...patch,
+        },
+      },
+    }))
+  }
+
+  function updateGallerySlider(patch: Partial<GallerySliderSettings>) {
+    setSettings((prev) => ({
+      ...prev,
+      gallery_slider: mergeGallerySlider({
+        ...prev.gallery_slider,
+        ...patch,
+      }),
     }))
   }
 
@@ -815,13 +851,40 @@ export function InvitationContentPage() {
                         </span>
                       </div>
                       <div className="mt-3 grid gap-3">
+                        <div className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-white px-3 py-2">
+                          <span className="text-xs font-medium text-stone-600">
+                            Tampilkan judul
+                          </span>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={custom.show_title !== false}
+                            onClick={() =>
+                              updateCustomSection(custom.id, {
+                                show_title: !(custom.show_title !== false),
+                              })
+                            }
+                            className={[
+                              'relative h-6 w-11 rounded-full transition',
+                              custom.show_title !== false ? 'bg-rose-600' : 'bg-stone-300',
+                            ].join(' ')}
+                          >
+                            <span
+                              className={[
+                                'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition',
+                                custom.show_title !== false ? 'translate-x-5' : '',
+                              ].join(' ')}
+                            />
+                          </button>
+                        </div>
                         <div>
                           <label className="text-xs font-medium text-stone-600">
-                            Judul
+                            Judul section
                           </label>
                           <input
                             className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm"
                             value={custom.title}
+                            disabled={custom.show_title === false}
                             onChange={(e) =>
                               updateCustomSection(custom.id, {
                                 title: e.target.value,
@@ -852,37 +915,85 @@ export function InvitationContentPage() {
                 const builtinKey = key as BuiltinSectionKey
                 if (!BUILTIN_SECTION_KEYS.includes(builtinKey)) return null
 
+                const titleCfg = settings.section_titles?.[builtinKey]
+                const titleShow = titleCfg?.show !== false
+                const titleText = titleCfg?.text ?? ''
+
                 return (
                   <div
                     key={key}
-                    className="flex flex-wrap items-center gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3"
+                    className="space-y-3 rounded-xl border border-stone-200 bg-white p-4"
                   >
-                    <label className="flex items-center gap-2 text-sm text-stone-800">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="flex items-center gap-2 text-sm font-medium text-stone-800">
+                        <input
+                          type="checkbox"
+                          checked={settings.sections?.[builtinKey] !== false}
+                          onChange={() => toggleSection(builtinKey)}
+                        />
+                        {BUILTIN_SECTION_LABELS[builtinKey]}
+                      </label>
+                      <span className="ml-auto flex gap-1">
+                        <button
+                          type="button"
+                          className="rounded border border-stone-200 px-2 py-1 text-xs disabled:opacity-40"
+                          disabled={index === 0}
+                          onClick={() => moveSection(key, -1)}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded border border-stone-200 px-2 py-1 text-xs disabled:opacity-40"
+                          disabled={index === sectionOrder.length - 1}
+                          onClick={() => moveSection(key, 1)}
+                        >
+                          ↓
+                        </button>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-stone-100 bg-stone-50 px-3 py-2">
+                      <span className="text-xs font-medium text-stone-600">
+                        Tampilkan judul
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={titleShow}
+                        onClick={() =>
+                          updateBuiltinSectionTitle(builtinKey, { show: !titleShow })
+                        }
+                        className={[
+                          'relative h-6 w-11 rounded-full transition',
+                          titleShow ? 'bg-rose-600' : 'bg-stone-300',
+                        ].join(' ')}
+                      >
+                        <span
+                          className={[
+                            'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition',
+                            titleShow ? 'translate-x-5' : '',
+                          ].join(' ')}
+                        />
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-stone-600">
+                        Judul section
+                      </label>
                       <input
-                        type="checkbox"
-                        checked={settings.sections?.[builtinKey] !== false}
-                        onChange={() => toggleSection(builtinKey)}
+                        className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm disabled:bg-stone-50 disabled:text-stone-400"
+                        value={titleText}
+                        placeholder={BUILTIN_SECTION_LABELS[builtinKey]}
+                        disabled={!titleShow}
+                        onChange={(e) =>
+                          updateBuiltinSectionTitle(builtinKey, {
+                            text: e.target.value,
+                          })
+                        }
                       />
-                      {BUILTIN_SECTION_LABELS[builtinKey]}
-                    </label>
-                    <span className="ml-auto flex gap-1">
-                      <button
-                        type="button"
-                        className="rounded border border-stone-200 px-2 py-1 text-xs disabled:opacity-40"
-                        disabled={index === 0}
-                        onClick={() => moveSection(key, -1)}
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded border border-stone-200 px-2 py-1 text-xs disabled:opacity-40"
-                        disabled={index === sectionOrder.length - 1}
-                        onClick={() => moveSection(key, 1)}
-                      >
-                        ↓
-                      </button>
-                    </span>
+                    </div>
                   </div>
                 )
               })}
@@ -1277,12 +1388,31 @@ export function InvitationContentPage() {
             </div>
             <div className="md:col-span-2">
               <label className="text-xs text-stone-500">Quotes / ayat pembuka</label>
-              <textarea
-                className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm"
-                rows={3}
+              <p className="mt-1 text-xs text-stone-400">
+                Gunakan editor untuk mengatur font, warna, rata teks, dan format lain.
+                Perubahan langsung terlihat di pratinjau di bawah.
+              </p>
+              <RichTextEditor
                 value={coupleInfo.opening_quote ?? ''}
-                onChange={(e) => setCoupleInfo((c) => ({ ...c, opening_quote: e.target.value }))}
+                onChange={(html) =>
+                  setCoupleInfo((c) => ({ ...c, opening_quote: html }))
+                }
+                placeholder="Tulis quotes atau ayat pembuka…"
               />
+              {hasRichText(coupleInfo.opening_quote) && (
+                <div className="mt-4 rounded-xl border border-dashed border-stone-300 bg-stone-50 p-4">
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-stone-500">
+                    Pratinjau di undangan
+                  </p>
+                  <div
+                    className="invitation-quote ck-content mx-auto max-w-lg"
+                    style={{ textAlign: 'initial' }}
+                    dangerouslySetInnerHTML={{
+                      __html: sanitizeRichHtml(coupleInfo.opening_quote ?? ''),
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </div>
           <button type="submit" disabled={saving} className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white">
@@ -1356,18 +1486,246 @@ export function InvitationContentPage() {
       )}
 
       {tab === 'gallery' && (
-        <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
-          <label className="cursor-pointer rounded-xl border border-dashed border-stone-300 px-4 py-8 text-center text-sm text-stone-600 hover:bg-stone-50">
-            + Unggah foto galeri (max 2MB)
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => void uploadGallery(e.target.files?.[0] ?? null)} />
-          </label>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {gallery.map((img) => (
-              <div key={img.id} className="relative aspect-square overflow-hidden rounded-xl border">
-                <img src={img.image_url} alt="" className="h-full w-full object-cover" />
-                <button type="button" className="absolute right-2 top-2 rounded bg-red-600 px-2 py-0.5 text-xs text-white" onClick={() => void deleteGallery(img.id)}>Hapus</button>
-              </div>
-            ))}
+        <div className="space-y-6">
+          <form
+            onSubmit={saveMain}
+            className="space-y-4 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm"
+          >
+            <div>
+              <h2 className="text-sm font-semibold text-stone-900">
+                Pengaturan slider (Splide)
+              </h2>
+              <p className="mt-1 text-xs text-stone-500">
+                Atur autoplay, interval, tipe transisi, dan gaya visual galeri.
+              </p>
+            </div>
+
+            {(() => {
+              const gs = mergeGallerySlider(settings.gallery_slider)
+              return (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 md:col-span-2">
+                    <div>
+                      <p className="text-xs font-medium text-stone-700">
+                        Auto sliding
+                      </p>
+                      <p className="text-[11px] text-stone-500">
+                        Nonaktifkan untuk geser manual saja
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={gs.autoplay}
+                      onClick={() => updateGallerySlider({ autoplay: !gs.autoplay })}
+                      className={[
+                        'relative h-6 w-11 rounded-full transition',
+                        gs.autoplay ? 'bg-rose-600' : 'bg-stone-300',
+                      ].join(' ')}
+                    >
+                      <span
+                        className={[
+                          'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition',
+                          gs.autoplay ? 'translate-x-5' : '',
+                        ].join(' ')}
+                      />
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-stone-600">
+                      Interval pindah (detik)
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={15}
+                      step={0.5}
+                      disabled={!gs.autoplay}
+                      className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm disabled:bg-stone-50"
+                      value={gs.interval_ms / 1000}
+                      onChange={(e) =>
+                        updateGallerySlider({
+                          interval_ms: Math.round(Number(e.target.value) * 1000),
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-stone-600">
+                      Tipe Splide
+                    </label>
+                    <select
+                      className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm"
+                      value={gs.type}
+                      onChange={(e) =>
+                        updateGallerySlider({
+                          type: e.target.value as GallerySliderType,
+                        })
+                      }
+                    >
+                      {(Object.keys(GALLERY_SLIDER_TYPE_LABELS) as GallerySliderType[]).map(
+                        (type) => (
+                          <option key={type} value={type}>
+                            {GALLERY_SLIDER_TYPE_LABELS[type]}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-stone-600">
+                      Style / tema
+                    </label>
+                    <select
+                      className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm"
+                      value={gs.theme}
+                      onChange={(e) =>
+                        updateGallerySlider({
+                          theme: e.target.value as GallerySliderTheme,
+                        })
+                      }
+                    >
+                      {(Object.keys(GALLERY_SLIDER_THEME_LABELS) as GallerySliderTheme[]).map(
+                        (theme) => (
+                          <option key={theme} value={theme}>
+                            {GALLERY_SLIDER_THEME_LABELS[theme]}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-stone-600">
+                      Slide per layar
+                    </label>
+                    <select
+                      className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm disabled:bg-stone-50"
+                      value={gs.per_page}
+                      disabled={gs.type === 'fade'}
+                      onChange={(e) =>
+                        updateGallerySlider({
+                          per_page: Number(e.target.value) as 1 | 2 | 3,
+                        })
+                      }
+                    >
+                      <option value={1}>1</option>
+                      <option value={2}>2</option>
+                      <option value={3}>3</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-stone-600">
+                      Tinggi slider (px)
+                    </label>
+                    <input
+                      type="number"
+                      min={180}
+                      max={640}
+                      step={10}
+                      className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm"
+                      value={gs.height_px}
+                      onChange={(e) =>
+                        updateGallerySlider({
+                          height_px: Number(e.target.value) || DEFAULT_GALLERY_SLIDER.height_px,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-stone-600">
+                      Jarak antar slide (px)
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={40}
+                      className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm"
+                      value={gs.gap_px}
+                      onChange={(e) =>
+                        updateGallerySlider({
+                          gap_px: Number(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <label className="flex items-center gap-2 text-sm text-stone-700">
+                    <input
+                      type="checkbox"
+                      checked={gs.arrows}
+                      onChange={(e) => updateGallerySlider({ arrows: e.target.checked })}
+                    />
+                    Tampilkan panah
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-stone-700">
+                    <input
+                      type="checkbox"
+                      checked={gs.rewind}
+                      onChange={(e) => updateGallerySlider({ rewind: e.target.checked })}
+                    />
+                    Rewind ke awal
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-stone-700">
+                    <input
+                      type="checkbox"
+                      checked={gs.pause_on_hover}
+                      disabled={!gs.autoplay}
+                      onChange={(e) =>
+                        updateGallerySlider({ pause_on_hover: e.target.checked })
+                      }
+                    />
+                    Pause saat hover
+                  </label>
+                </div>
+              )
+            })()}
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+            >
+              {saving ? 'Menyimpan…' : 'Simpan pengaturan galeri'}
+            </button>
+          </form>
+
+          <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+            <label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-stone-300 px-4 py-8 text-center text-sm text-stone-600 hover:bg-stone-50">
+              + Unggah foto galeri (max 2MB)
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => void uploadGallery(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {gallery.map((img) => (
+                <div
+                  key={img.id}
+                  className="relative aspect-square overflow-hidden rounded-xl border"
+                >
+                  <img
+                    src={img.image_url}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-2 rounded bg-red-600 px-2 py-0.5 text-xs text-white"
+                    onClick={() => void deleteGallery(img.id)}
+                  >
+                    Hapus
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

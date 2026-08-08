@@ -26,6 +26,14 @@ export type SectionVisibility = {
 
 export type BuiltinSectionKey = keyof SectionVisibility
 
+/** Konfigurasi judul per section bawaan */
+export type SectionTitleConfig = {
+  /** Teks judul; kosong = pakai label default */
+  text?: string
+  /** Tampilkan judul section (default: true) */
+  show?: boolean
+}
+
 /** Section kustom (HTML) yang bisa ditambah dinamis di mode Multi-section */
 export type CustomSection = {
   id: string
@@ -33,6 +41,8 @@ export type CustomSection = {
   content: string
   enabled: boolean
   sort_order: number
+  /** Tampilkan judul section (default: true) */
+  show_title?: boolean
 }
 
 export const BUILTIN_SECTION_KEYS: BuiltinSectionKey[] = [
@@ -80,6 +90,7 @@ export function createCustomSection(
     content: partial?.content ?? '<p>Tulis konten section di sini.</p>',
     enabled: partial?.enabled ?? true,
     sort_order: partial?.sort_order ?? 0,
+    show_title: partial?.show_title ?? true,
   }
 }
 
@@ -157,6 +168,75 @@ export type SectionBackground = {
   min_height_px?: number
 }
 
+/** Opsi carousel Splide untuk section Galeri */
+export type GallerySliderType = 'slide' | 'loop' | 'fade'
+export type GallerySliderTheme = 'default' | 'skyblue' | 'sea-green' | 'soft-rose'
+
+export type GallerySliderSettings = {
+  /** Geser otomatis (default: true) */
+  autoplay?: boolean
+  /** Interval pindah slide dalam ms (default: 4000) */
+  interval_ms?: number
+  /** Tipe transisi Splide */
+  type?: GallerySliderType
+  /** Rewind ke awal (berguna untuk type slide/fade) */
+  rewind?: boolean
+  arrows?: boolean
+  pagination?: boolean
+  pause_on_hover?: boolean
+  /** Jumlah slide terlihat */
+  per_page?: 1 | 2 | 3
+  gap_px?: number
+  height_px?: number
+  /** Preset visual (mengikuti tema Splide + soft-rose) */
+  theme?: GallerySliderTheme
+}
+
+export const DEFAULT_GALLERY_SLIDER: Required<GallerySliderSettings> = {
+  autoplay: true,
+  interval_ms: 4000,
+  type: 'loop',
+  rewind: true,
+  arrows: true,
+  pagination: false,
+  pause_on_hover: true,
+  per_page: 1,
+  gap_px: 12,
+  height_px: 320,
+  theme: 'soft-rose',
+}
+
+export const GALLERY_SLIDER_TYPE_LABELS: Record<GallerySliderType, string> = {
+  slide: 'Slide',
+  loop: 'Loop',
+  fade: 'Fade',
+}
+
+export const GALLERY_SLIDER_THEME_LABELS: Record<GallerySliderTheme, string> = {
+  default: 'Default (Splide)',
+  skyblue: 'Skyblue (Splide)',
+  'sea-green': 'Sea Green (Splide)',
+  'soft-rose': 'Soft Rose',
+}
+
+export function mergeGallerySlider(
+  partial?: GallerySliderSettings | null,
+): Required<GallerySliderSettings> {
+  const merged = {
+    ...DEFAULT_GALLERY_SLIDER,
+    ...partial,
+  }
+  const interval = Number(merged.interval_ms)
+  merged.interval_ms = Number.isFinite(interval)
+    ? Math.min(15000, Math.max(1000, interval))
+    : DEFAULT_GALLERY_SLIDER.interval_ms
+  const perPage = Number(merged.per_page)
+  merged.per_page = ([1, 2, 3].includes(perPage) ? perPage : 1) as 1 | 2 | 3
+  // fade tidak mendukung perPage > 1
+  if (merged.type === 'fade') merged.per_page = 1
+  return merged
+}
+
 export type InvitationSettings = {
   cover_enabled?: boolean
   cover_title?: string
@@ -166,6 +246,8 @@ export type InvitationSettings = {
   music_url?: string
   music_volume?: number
   sections?: SectionVisibility
+  /** Judul & visibility judul untuk section bawaan */
+  section_titles?: Partial<Record<BuiltinSectionKey, SectionTitleConfig>>
   /** Section HTML kustom (mode Multi-section) */
   custom_sections?: CustomSection[]
   /**
@@ -178,6 +260,8 @@ export type InvitationSettings = {
   background_overlay?: number
   /** Background khusus per section */
   section_backgrounds?: Partial<Record<SectionBgKey, SectionBackground>>
+  /** Pengaturan Splide untuk section Galeri */
+  gallery_slider?: GallerySliderSettings
   decor_assets?: DecorAsset[]
   viewport_mode?: ViewportMode
 }
@@ -291,11 +375,13 @@ export const DEFAULT_INVITATION_SETTINGS: InvitationSettings = {
     hosts: true,
     qr: true,
   },
+  section_titles: {},
   custom_sections: [],
   section_order: [...DEFAULT_SECTION_ORDER],
   background_image_url: '',
   background_overlay: 0.25,
   section_backgrounds: {},
+  gallery_slider: { ...DEFAULT_GALLERY_SLIDER },
   decor_assets: [],
   viewport_mode: 'existing',
 }
@@ -315,17 +401,34 @@ export function mergeSettings(
       ...DEFAULT_INVITATION_SETTINGS.sections,
       ...partial?.sections,
     },
+    section_titles: {
+      ...DEFAULT_INVITATION_SETTINGS.section_titles,
+      ...partial?.section_titles,
+    },
     custom_sections: partial?.custom_sections ?? [],
     section_order: partial?.section_order?.length
       ? partial.section_order
       : [...DEFAULT_SECTION_ORDER],
     decor_assets: partial?.decor_assets ?? [],
     section_backgrounds: partial?.section_backgrounds ?? {},
+    gallery_slider: mergeGallerySlider(partial?.gallery_slider),
   }
 
   return {
     ...merged,
     section_order: resolveSectionOrder(merged),
+  }
+}
+
+export function getSectionTitle(
+  settings: InvitationSettings,
+  key: BuiltinSectionKey,
+): { text: string; show: boolean } {
+  const cfg = settings.section_titles?.[key]
+  const text = cfg?.text?.trim() || BUILTIN_SECTION_LABELS[key]
+  return {
+    text,
+    show: cfg?.show !== false,
   }
 }
 

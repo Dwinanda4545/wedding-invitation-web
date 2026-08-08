@@ -1,8 +1,11 @@
 import type { HostsInfo } from '../../lib/invitationTypes'
+import { SectionTitle } from './SectionTitle'
 
 type Props = {
   hosts: HostsInfo
   tagColor?: string
+  title?: string
+  showTitle?: boolean
 }
 
 function HostList({
@@ -29,16 +32,19 @@ function HostList({
   )
 }
 
-export function HostsSection({ hosts, tagColor }: Props) {
+export function HostsSection({
+  hosts,
+  tagColor,
+  title = 'Turut Mengundang',
+  showTitle = true,
+}: Props) {
   const groomSide = hosts.groom_side ?? []
   const brideSide = hosts.bride_side ?? []
   if (groomSide.length === 0 && brideSide.length === 0) return null
 
   return (
     <section className="inv-section inv-animate-fade-up">
-      <h2 className="inv-section-title" style={{ color: tagColor }}>
-        Turut Mengundang
-      </h2>
+      <SectionTitle title={title} show={showTitle} tagColor={tagColor} />
       <div className="mx-auto flex max-w-lg flex-col gap-8 md:flex-row">
         <HostList title="Kel. Mempelai Pria" items={groomSide} tagColor={tagColor} />
         <HostList title="Kel. Mempelai Wanita" items={brideSide} tagColor={tagColor} />

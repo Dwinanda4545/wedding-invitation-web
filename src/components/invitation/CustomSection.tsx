@@ -1,5 +1,6 @@
-import DOMPurify from 'dompurify'
 import type { CustomSection as CustomSectionData } from '../../lib/invitationTypes'
+import { sanitizeRichHtml } from '../../lib/richHtml'
+import { SectionTitle } from './SectionTitle'
 
 type Props = {
   section: CustomSectionData
@@ -7,17 +8,17 @@ type Props = {
 }
 
 export function CustomSection({ section, tagColor }: Props) {
-  const html = DOMPurify.sanitize(section.content || '')
+  const html = sanitizeRichHtml(section.content || '')
 
   return (
     <section className="inv-section inv-animate-fade-up">
-      {section.title.trim() && (
-        <h2 className="inv-section-title" style={{ color: tagColor }}>
-          {section.title}
-        </h2>
-      )}
+      <SectionTitle
+        title={section.title}
+        show={section.show_title !== false}
+        tagColor={tagColor}
+      />
       <div
-        className="invitation-content mx-auto max-w-md text-center text-sm leading-relaxed opacity-90"
+        className="invitation-quote ck-content mx-auto max-w-md text-sm leading-relaxed"
         dangerouslySetInnerHTML={{ __html: html }}
       />
     </section>

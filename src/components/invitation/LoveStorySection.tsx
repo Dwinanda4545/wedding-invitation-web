@@ -1,18 +1,24 @@
 import type { LoveStoryItem } from '../../lib/invitationTypes'
+import { SectionTitle } from './SectionTitle'
 
 type Props = {
   stories: LoveStoryItem[]
   tagColor?: string
+  title?: string
+  showTitle?: boolean
 }
 
-export function LoveStorySection({ stories, tagColor }: Props) {
+export function LoveStorySection({
+  stories,
+  tagColor,
+  title = 'Cerita Cinta',
+  showTitle = true,
+}: Props) {
   if (stories.length === 0) return null
 
   return (
     <section className="inv-section inv-animate-fade-up">
-      <h2 className="inv-section-title" style={{ color: tagColor }}>
-        Cerita Cinta
-      </h2>
+      <SectionTitle title={title} show={showTitle} tagColor={tagColor} />
       <div className="inv-timeline mx-auto max-w-md">
         {stories.map((story, idx) => (
           <div key={story.id ?? idx} className="inv-timeline-item">

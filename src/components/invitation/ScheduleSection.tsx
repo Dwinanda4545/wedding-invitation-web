@@ -1,11 +1,14 @@
 import type { EventSchedule } from '../../lib/invitationTypes'
 import { formatScheduleDate, formatTimeRange } from '../../lib/invitationTypes'
+import { SectionTitle } from './SectionTitle'
 
 type Props = {
   schedules: EventSchedule[]
   fallbackDate?: string | null
   fallbackLocation?: string | null
   tagColor?: string
+  title?: string
+  showTitle?: boolean
 }
 
 export function ScheduleSection({
@@ -13,6 +16,8 @@ export function ScheduleSection({
   fallbackDate,
   fallbackLocation,
   tagColor,
+  title = 'Detail Acara',
+  showTitle = true,
 }: Props) {
   const items =
     schedules.length > 0
@@ -35,9 +40,7 @@ export function ScheduleSection({
 
   return (
     <section className="inv-section inv-animate-fade-up">
-      <h2 className="inv-section-title" style={{ color: tagColor }}>
-        Detail Acara
-      </h2>
+      <SectionTitle title={title} show={showTitle} tagColor={tagColor} />
       <div className="mx-auto max-w-md space-y-6">
         {items.map((item, idx) => (
           <div

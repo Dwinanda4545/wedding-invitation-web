@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import type { DecorAsset, InvitationResponse } from '../../lib/invitationTypes'
 import {
   formatEventDate,
+  getSectionTitle,
   mergeCoupleInfo,
   mergeHosts,
   mergeSettings,
@@ -117,13 +118,28 @@ export function SectionInvitation({
     : pageStyle
 
   function renderBuiltin(key: string) {
-    switch (key) {
+    const builtinKey = key as
+      | 'couple'
+      | 'schedule'
+      | 'love_story'
+      | 'gallery'
+      | 'wishes'
+      | 'hosts'
+      | 'qr'
+    const sectionTitle = getSectionTitle(settings, builtinKey)
+
+    switch (builtinKey) {
       case 'couple':
         if (sections.couple === false) return null
         return (
           <SectionBackgroundShell key={key} sectionKey="couple" settings={settings}>
             <div className="mx-auto max-w-lg">
-              <CoupleSection coupleInfo={coupleInfo} tagColor={theme.style.tagColor} />
+              <CoupleSection
+                coupleInfo={coupleInfo}
+                tagColor={theme.style.tagColor}
+                title={sectionTitle.text}
+                showTitle={sectionTitle.show}
+              />
             </div>
           </SectionBackgroundShell>
         )
@@ -137,6 +153,8 @@ export function SectionInvitation({
                 fallbackDate={data.event.event_date}
                 fallbackLocation={data.event.location}
                 tagColor={theme.style.tagColor}
+                title={sectionTitle.text}
+                showTitle={sectionTitle.show}
               />
             </div>
           </SectionBackgroundShell>
@@ -149,6 +167,8 @@ export function SectionInvitation({
               <LoveStorySection
                 stories={data.event.love_stories ?? []}
                 tagColor={theme.style.tagColor}
+                title={sectionTitle.text}
+                showTitle={sectionTitle.show}
               />
             </div>
           </SectionBackgroundShell>
@@ -161,6 +181,9 @@ export function SectionInvitation({
               <GallerySection
                 images={data.event.gallery ?? []}
                 tagColor={theme.style.tagColor}
+                title={sectionTitle.text}
+                showTitle={sectionTitle.show}
+                sliderSettings={settings.gallery_slider}
               />
             </div>
           </SectionBackgroundShell>
@@ -176,6 +199,8 @@ export function SectionInvitation({
                 wishes={wishes}
                 onWishAdded={handleWishAdded}
                 tagColor={theme.style.tagColor}
+                title={sectionTitle.text}
+                showTitle={sectionTitle.show}
               />
             </div>
           </SectionBackgroundShell>
@@ -185,7 +210,12 @@ export function SectionInvitation({
         return (
           <SectionBackgroundShell key={key} sectionKey="hosts" settings={settings}>
             <div className="mx-auto max-w-lg">
-              <HostsSection hosts={hosts} tagColor={theme.style.tagColor} />
+              <HostsSection
+                hosts={hosts}
+                tagColor={theme.style.tagColor}
+                title={sectionTitle.text}
+                showTitle={sectionTitle.show}
+              />
             </div>
           </SectionBackgroundShell>
         )
@@ -198,6 +228,8 @@ export function SectionInvitation({
                 qrCodeUrl={data.guest.qr_code_url}
                 isAttended={Boolean(data.guest.is_attended)}
                 theme={theme}
+                title={sectionTitle.text}
+                showTitle={sectionTitle.show}
               />
             </div>
           </SectionBackgroundShell>

@@ -1,15 +1,25 @@
 import type { InvitationTheme } from '../../lib/invitationTemplates'
 import { themeQrCardStyle } from '../../lib/invitationTemplates'
+import { SectionTitle } from './SectionTitle'
 
 type Props = {
   qrCodeUrl?: string | null
   isAttended?: boolean
   theme: InvitationTheme
+  title?: string
+  showTitle?: boolean
 }
 
-export function QrSection({ qrCodeUrl, isAttended = false, theme }: Props) {
+export function QrSection({
+  qrCodeUrl,
+  isAttended = false,
+  theme,
+  title = 'QR Check-in',
+  showTitle = true,
+}: Props) {
   return (
     <section className="inv-section inv-animate-fade-up">
+      <SectionTitle title={title} show={showTitle} tagColor={theme.style.tagColor} />
       <div style={themeQrCardStyle(theme)}>
         {isAttended ? (
           <div className="mx-auto flex max-w-[280px] flex-col items-center rounded-2xl bg-white px-5 py-8 text-center shadow-inner">
