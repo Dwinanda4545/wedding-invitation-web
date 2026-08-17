@@ -266,6 +266,81 @@ export type InvitationSettings = {
   gallery_slider?: GallerySliderSettings
   decor_assets?: DecorAsset[]
   viewport_mode?: ViewportMode
+  /**
+   * Mode 2 per section: HTML/CSS/JS + libraries.
+   * Keys: cover | hero | builtin except qr | custom:<id>
+   */
+  section_custom?: Record<string, SectionCustomCode>
+}
+
+export type SectionCustomLibraryKind = 'js' | 'css'
+
+export type SectionCustomLibrary = {
+  id: string
+  name: string
+  src: string
+  kind: SectionCustomLibraryKind
+}
+
+export type SectionCustomMode = 'existing' | 'custom'
+
+export type SectionCustomCode = {
+  mode: SectionCustomMode
+  html: string
+  css: string
+  js: string
+  libraries: SectionCustomLibrary[]
+}
+
+export const EMPTY_SECTION_CUSTOM: SectionCustomCode = {
+  mode: 'existing',
+  html: '',
+  css: '',
+  js: '',
+  libraries: [],
+}
+
+export const SECTION_CUSTOM_ELIGIBLE_KEYS = [
+  'cover',
+  'hero',
+  'couple',
+  'schedule',
+  'love_story',
+  'gallery',
+  'wishes',
+  'hosts',
+] as const
+
+export type SectionCustomEligibleKey =
+  (typeof SECTION_CUSTOM_ELIGIBLE_KEYS)[number]
+
+export function isSectionCustomEligibleKey(key: string): boolean {
+  if ((SECTION_CUSTOM_ELIGIBLE_KEYS as readonly string[]).includes(key)) {
+    return true
+  }
+  return key.startsWith('custom:') && key.length > 'custom:'.length
+}
+
+export function getSectionCustom(
+  settings: InvitationSettings | null | undefined,
+  key: string,
+): SectionCustomCode {
+  const raw = settings?.section_custom?.[key]
+  if (!raw) return { ...EMPTY_SECTION_CUSTOM, libraries: [] }
+  return {
+    mode: raw.mode === 'custom' ? 'custom' : 'existing',
+    html: typeof raw.html === 'string' ? raw.html : '',
+    css: typeof raw.css === 'string' ? raw.css : '',
+    js: typeof raw.js === 'string' ? raw.js : '',
+    libraries: Array.isArray(raw.libraries) ? raw.libraries : [],
+  }
+}
+
+export function isSectionCustomMode(
+  settings: InvitationSettings | null | undefined,
+  key: string,
+): boolean {
+  return getSectionCustom(settings, key).mode === 'custom'
 }
 
 export const SECTION_BG_LABELS: Record<SectionBgKey, string> = {
@@ -386,6 +461,7 @@ export const DEFAULT_INVITATION_SETTINGS: InvitationSettings = {
   gallery_slider: { ...DEFAULT_GALLERY_SLIDER },
   decor_assets: [],
   viewport_mode: 'existing',
+  section_custom: {},
 }
 
 export const DEFAULT_HOSTS: HostsInfo = {
@@ -414,6 +490,7 @@ export function mergeSettings(
     decor_assets: partial?.decor_assets ?? [],
     section_backgrounds: partial?.section_backgrounds ?? {},
     gallery_slider: mergeGallerySlider(partial?.gallery_slider),
+    section_custom: partial?.section_custom ?? {},
   }
 
   return {

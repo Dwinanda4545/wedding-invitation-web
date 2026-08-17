@@ -2,13 +2,16 @@ import { useMemo, useRef, useState } from 'react'
 import type { DecorAsset, InvitationResponse } from '../../lib/invitationTypes'
 import {
   formatEventDate,
+  getSectionCustom,
   getSectionTitle,
+  isSectionCustomMode,
   mergeCoupleInfo,
   mergeHosts,
   mergeSettings,
   parseCustomSectionOrderKey,
   resolveSectionOrder,
 } from '../../lib/invitationTypes'
+import { CustomSectionFrame } from './CustomSectionFrame'
 import {
   getInvitationTheme,
   themePageStyle,
@@ -117,6 +120,37 @@ export function SectionInvitation({
     ? { ...pageStyle, position: 'absolute' as const, inset: 0 }
     : pageStyle
 
+  const customTheme = {
+    tagColor: theme.style.tagColor,
+    pageTextColor: theme.style.pageTextColor,
+    fontFamily: theme.style.fontFamily,
+  }
+
+  const frameData = {
+    ...data,
+    event: { ...data.event, wishes },
+  }
+
+  function renderCustomFrame(key: string, variant: 'content' | 'cover' = 'content') {
+    return (
+      <CustomSectionFrame
+        key={key}
+        sectionKey={key}
+        code={getSectionCustom(settings, key)}
+        data={frameData}
+        theme={customTheme}
+        variant={variant}
+        isOpen={coverOpen}
+        coverStyle={{ ...coverStyle, padding: 0 }}
+        onOpenCover={handleOpenCover}
+        onError={(message) => {
+          if (previewMode) return
+          console.warn(`[invitation ${key}]`, message)
+        }}
+      />
+    )
+  }
+
   function renderBuiltin(key: string) {
     const builtinKey = key as
       | 'couple'
@@ -127,6 +161,14 @@ export function SectionInvitation({
       | 'hosts'
       | 'qr'
     const sectionTitle = getSectionTitle(settings, builtinKey)
+
+    if (
+      builtinKey !== 'qr' &&
+      isSectionCustomMode(settings, builtinKey)
+    ) {
+      if (sections[builtinKey] === false) return null
+      return renderCustomFrame(builtinKey)
+    }
 
     switch (builtinKey) {
       case 'couple':
@@ -260,17 +302,23 @@ export function SectionInvitation({
 
         {showSakura && contentVisible && <SakuraAnimation />}
 
-        <CoverSection
-          settings={settings}
-          eventName={data.event.name}
-          eventDateLabel={formatEventDate(data.event.event_date)}
-          guestName={data.guest.name}
-          guestType={data.guest.guest_type}
-          onOpen={handleOpenCover}
-          style={coverStyle}
-          isOpen={coverOpen}
-          tagColor={theme.style.tagColor}
-        />
+        {isSectionCustomMode(settings, 'cover') ? (
+          settings.cover_enabled !== false ? (
+            renderCustomFrame('cover', 'cover')
+          ) : null
+        ) : (
+          <CoverSection
+            settings={settings}
+            eventName={data.event.name}
+            eventDateLabel={formatEventDate(data.event.event_date)}
+            guestName={data.guest.name}
+            guestType={data.guest.guest_type}
+            onOpen={handleOpenCover}
+            style={coverStyle}
+            isOpen={coverOpen}
+            tagColor={theme.style.tagColor}
+          />
+        )}
 
         <div
           className={[
@@ -278,23 +326,30 @@ export function SectionInvitation({
             contentVisible ? 'inv-animate-fade-in' : 'invisible h-0 overflow-hidden',
           ].join(' ')}
         >
-          <SectionBackgroundShell sectionKey="hero" settings={settings}>
-            <div className="mx-auto max-w-lg">
-              <HeroSection
-                eventName={data.event.name}
-                eventDate={data.event.event_date}
-                coupleInfo={coupleInfo}
-                settings={settings}
-                tagColor={theme.style.tagColor}
-              />
-            </div>
-          </SectionBackgroundShell>
+          {isSectionCustomMode(settings, 'hero') ? (
+            renderCustomFrame('hero')
+          ) : (
+            <SectionBackgroundShell sectionKey="hero" settings={settings}>
+              <div className="mx-auto max-w-lg">
+                <HeroSection
+                  eventName={data.event.name}
+                  eventDate={data.event.event_date}
+                  coupleInfo={coupleInfo}
+                  settings={settings}
+                  tagColor={theme.style.tagColor}
+                />
+              </div>
+            </SectionBackgroundShell>
+          )}
 
           {sectionOrder.map((key) => {
             const customId = parseCustomSectionOrderKey(key)
             if (customId) {
               const custom = customById.get(customId)
               if (!custom || custom.enabled === false) return null
+              if (isSectionCustomMode(settings, key)) {
+                return renderCustomFrame(key)
+              }
               return (
                 <div key={key} className="mx-auto max-w-lg">
                   <CustomSection section={custom} tagColor={theme.style.tagColor} />

@@ -3,6 +3,7 @@ import axios from 'axios'
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { DecorEditorPanel } from './DecorEditorPanel'
+import { SectionCustomCodeEditor } from './SectionCustomCodeEditor'
 import { SectionInvitation } from '../../components/invitation/SectionInvitation'
 import { RichTextEditor } from '../../components/RichTextEditor'
 import { hasRichText, sanitizeRichHtml } from '../../lib/richHtml'
@@ -252,6 +253,59 @@ export function InvitationContentPage() {
   const activeTemplate = useMemo(
     () => getInvitationTheme(templateId, null, customThemes),
     [templateId, customThemes],
+  )
+
+  const customThemeBits = {
+    tagColor: activeTemplate.style.tagColor,
+    pageTextColor: activeTemplate.style.pageTextColor,
+    fontFamily: activeTemplate.style.fontFamily,
+  }
+
+  const previewInvitationData: InvitationResponse = useMemo(
+    () => ({
+      guest: {
+        id: 0,
+        name: 'Tamu Preview',
+        guest_type: 'VIP',
+        secret_token: '',
+        qr_code_url: null,
+      },
+      event: {
+        id: Number.isFinite(eventId) ? eventId : 0,
+        name: eventName || 'Nama Acara',
+        event_date: eventDate,
+        location: eventLocation,
+        invitation_mode: 'sections',
+        invitation_template: templateId,
+        invitation_style: {
+          theme: activeTemplate.id,
+          label: activeTemplate.label,
+          ...activeTemplate.style,
+        },
+        invitation_content: null,
+        couple_info: coupleInfo,
+        invitation_settings: settings,
+        hosts,
+        schedules,
+        love_stories: stories,
+        gallery,
+        wishes: [],
+      },
+    }),
+    [
+      eventId,
+      eventName,
+      eventDate,
+      eventLocation,
+      templateId,
+      activeTemplate,
+      coupleInfo,
+      settings,
+      hosts,
+      schedules,
+      stories,
+      gallery,
+    ],
   )
 
   const previewHtml = useMemo(() => {
@@ -726,21 +780,44 @@ export function InvitationContentPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="text-xs font-medium text-stone-600">Judul cover</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm"
-                value={settings.cover_title ?? ''}
-                onChange={(e) => setSettings((s) => ({ ...s, cover_title: e.target.value }))}
-                placeholder="Cherry Blossom"
-              />
+            <div className="md:col-span-2">
+              <SectionCustomCodeEditor
+                sectionKey="cover"
+                label="Cover"
+                settings={settings}
+                onSettingsChange={setSettings}
+                data={previewInvitationData}
+                theme={customThemeBits}
+              >
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="text-xs font-medium text-stone-600">Judul cover</label>
+                    <input
+                      className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm"
+                      value={settings.cover_title ?? ''}
+                      onChange={(e) => setSettings((s) => ({ ...s, cover_title: e.target.value }))}
+                      placeholder="Cherry Blossom"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-stone-600">Subjudul cover</label>
+                    <input
+                      className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm"
+                      value={settings.cover_subtitle ?? ''}
+                      onChange={(e) => setSettings((s) => ({ ...s, cover_subtitle: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </SectionCustomCodeEditor>
             </div>
-            <div>
-              <label className="text-xs font-medium text-stone-600">Subjudul cover</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm"
-                value={settings.cover_subtitle ?? ''}
-                onChange={(e) => setSettings((s) => ({ ...s, cover_subtitle: e.target.value }))}
+            <div className="md:col-span-2">
+              <SectionCustomCodeEditor
+                sectionKey="hero"
+                label="Hero / Pembuka"
+                settings={settings}
+                onSettingsChange={setSettings}
+                data={previewInvitationData}
+                theme={customThemeBits}
               />
             </div>
             <div className="md:col-span-2 space-y-3 rounded-xl border border-stone-200 bg-stone-50 p-4">
@@ -867,7 +944,16 @@ export function InvitationContentPage() {
                           </button>
                         </span>
                       </div>
-                      <div className="mt-3 grid gap-3">
+                      <div className="mt-3">
+                        <SectionCustomCodeEditor
+                          sectionKey={key}
+                          label={custom.title || 'Section kustom'}
+                          settings={settings}
+                          onSettingsChange={setSettings}
+                          data={previewInvitationData}
+                          theme={customThemeBits}
+                        >
+                        <div className="grid gap-3">
                         <div className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-white px-3 py-2">
                           <span className="text-xs font-medium text-stone-600">
                             Tampilkan judul
@@ -924,6 +1010,8 @@ export function InvitationContentPage() {
                             }
                           />
                         </div>
+                        </div>
+                        </SectionCustomCodeEditor>
                       </div>
                     </div>
                   )
@@ -970,6 +1058,8 @@ export function InvitationContentPage() {
                       </span>
                     </div>
 
+                    {builtinKey === 'qr' ? (
+                      <>
                     <div className="flex items-center justify-between gap-3 rounded-lg border border-stone-100 bg-stone-50 px-3 py-2">
                       <span className="text-xs font-medium text-stone-600">
                         Tampilkan judul
@@ -1011,6 +1101,59 @@ export function InvitationContentPage() {
                         }
                       />
                     </div>
+                      </>
+                    ) : (
+                      <SectionCustomCodeEditor
+                        sectionKey={builtinKey}
+                        label={BUILTIN_SECTION_LABELS[builtinKey]}
+                        settings={settings}
+                        onSettingsChange={setSettings}
+                        data={previewInvitationData}
+                        theme={customThemeBits}
+                      >
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-stone-100 bg-stone-50 px-3 py-2">
+                      <span className="text-xs font-medium text-stone-600">
+                        Tampilkan judul
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={titleShow}
+                        onClick={() =>
+                          updateBuiltinSectionTitle(builtinKey, { show: !titleShow })
+                        }
+                        className={[
+                          'relative h-6 w-11 rounded-full transition',
+                          titleShow ? 'bg-rose-600' : 'bg-stone-300',
+                        ].join(' ')}
+                      >
+                        <span
+                          className={[
+                            'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition',
+                            titleShow ? 'translate-x-5' : '',
+                          ].join(' ')}
+                        />
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-stone-600">
+                        Judul section
+                      </label>
+                      <input
+                        className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm disabled:bg-stone-50 disabled:text-stone-400"
+                        value={titleText}
+                        placeholder={BUILTIN_SECTION_LABELS[builtinKey]}
+                        disabled={!titleShow}
+                        onChange={(e) =>
+                          updateBuiltinSectionTitle(builtinKey, {
+                            text: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                      </SectionCustomCodeEditor>
+                    )}
                   </div>
                 )
               })}
@@ -1373,6 +1516,14 @@ export function InvitationContentPage() {
 
       {tab === 'couple' && (
         <form onSubmit={saveMain} className="space-y-6 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+          <SectionCustomCodeEditor
+            sectionKey="couple"
+            label="Mempelai"
+            settings={settings}
+            onSettingsChange={setSettings}
+            data={previewInvitationData}
+            theme={customThemeBits}
+          >
           <div className="grid gap-6 md:grid-cols-2">
             {(['groom', 'bride'] as const).map((side) => (
               <div key={side} className="space-y-3">
@@ -1432,6 +1583,7 @@ export function InvitationContentPage() {
               )}
             </div>
           </div>
+          </SectionCustomCodeEditor>
           <button type="submit" disabled={saving} className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white">
             Simpan mempelai
           </button>
@@ -1440,6 +1592,14 @@ export function InvitationContentPage() {
 
       {tab === 'schedules' && (
         <div className="space-y-6">
+          <SectionCustomCodeEditor
+            sectionKey="schedule"
+            label="Detail Acara"
+            settings={settings}
+            onSettingsChange={setSettings}
+            data={previewInvitationData}
+            theme={customThemeBits}
+          >
           <form onSubmit={saveSchedule} className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
             <h3 className="font-semibold">{editingScheduleId ? 'Ubah jadwal' : 'Tambah jadwal acara'}</h3>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -1469,11 +1629,28 @@ export function InvitationContentPage() {
               </li>
             ))}
           </ul>
+          </SectionCustomCodeEditor>
+          <button
+            type="button"
+            onClick={() => void saveMain()}
+            disabled={saving}
+            className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
+          >
+            {saving ? 'Menyimpan…' : 'Simpan pengaturan section'}
+          </button>
         </div>
       )}
 
       {tab === 'stories' && (
         <div className="space-y-6">
+          <SectionCustomCodeEditor
+            sectionKey="love_story"
+            label="Cerita Cinta"
+            settings={settings}
+            onSettingsChange={setSettings}
+            data={previewInvitationData}
+            theme={customThemeBits}
+          >
           <form onSubmit={saveStory} className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
             <h3 className="font-semibold">{editingStoryId ? 'Ubah cerita' : 'Tambah cerita cinta'}</h3>
             <div className="mt-4 space-y-3">
@@ -1499,11 +1676,28 @@ export function InvitationContentPage() {
               </li>
             ))}
           </ul>
+          </SectionCustomCodeEditor>
+          <button
+            type="button"
+            onClick={() => void saveMain()}
+            disabled={saving}
+            className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
+          >
+            {saving ? 'Menyimpan…' : 'Simpan pengaturan section'}
+          </button>
         </div>
       )}
 
       {tab === 'gallery' && (
         <div className="space-y-6">
+          <SectionCustomCodeEditor
+            sectionKey="gallery"
+            label="Galeri"
+            settings={settings}
+            onSettingsChange={setSettings}
+            data={previewInvitationData}
+            theme={customThemeBits}
+          >
           <form
             onSubmit={saveMain}
             className="space-y-4 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm"
@@ -1744,11 +1938,21 @@ export function InvitationContentPage() {
               ))}
             </div>
           </div>
+          </SectionCustomCodeEditor>
         </div>
       )}
 
       {tab === 'hosts' && (
-        <form onSubmit={saveMain} className="grid gap-6 md:grid-cols-2">
+        <form onSubmit={saveMain} className="space-y-6">
+          <SectionCustomCodeEditor
+            sectionKey="hosts"
+            label="Turut Mengundang"
+            settings={settings}
+            onSettingsChange={setSettings}
+            data={previewInvitationData}
+            theme={customThemeBits}
+          >
+          <div className="grid gap-6 md:grid-cols-2">
           <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
             <label className="text-sm font-semibold">Kel. Mempelai Pria (satu baris per nama)</label>
             <textarea
@@ -1765,11 +1969,11 @@ export function InvitationContentPage() {
               onChange={(e) => updateHostList('bride_side', e.target.value)}
             />
           </div>
-          <div className="md:col-span-2">
-            <button type="submit" disabled={saving} className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white">
-              Simpan daftar undangan
-            </button>
           </div>
+          </SectionCustomCodeEditor>
+          <button type="submit" disabled={saving} className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white">
+            Simpan daftar undangan
+          </button>
         </form>
       )}
 
