@@ -50,13 +50,13 @@ img { max-width: 100%; height: auto; }
 .card { border-radius: 1rem; padding: 1.5rem; background: rgba(255,255,255,0.2); backdrop-filter: blur(4px); }
 .person { margin: 2rem 0; }
 .person-photo { width: 7rem; height: 7rem; border-radius: 9999px; object-fit: cover; margin: 1rem auto 0; display: block; box-shadow: 0 0 0 2px rgba(255,255,255,0.4); }
-.person-name { font-family: serif; font-size: 1.5rem; margin: 1rem 0 0; color: var(--inv-tag); }
-.amp { font-family: serif; font-size: 2rem; opacity: 0.4; margin: 0.5rem 0; }
+.person-name { font-family: var(--inv-font); font-size: 1.5rem; margin: 1rem 0 0; color: var(--inv-tag); }
+.amp { font-family: var(--inv-font); font-size: 2rem; opacity: 0.4; margin: 0.5rem 0; }
 .cover-root { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem; position: relative; box-sizing: border-box; }
 .cover-root .bg-img, .cover-root .bg-overlay { position: absolute; inset: 0; }
 .cover-root .bg-img { object-fit: cover; width: 100%; height: 100%; }
 .cover-kicker { font-size: 0.75rem; letter-spacing: 0.35em; text-transform: uppercase; }
-.cover-title { font-family: serif; font-size: 2.25rem; font-weight: 600; margin: 1rem 0 0; color: var(--inv-tag); position: relative; z-index: 1; }
+.cover-title { font-family: var(--inv-font); font-size: 2.25rem; font-weight: 600; margin: 1rem 0 0; color: var(--inv-tag); position: relative; z-index: 1; }
 .cover-date, .cover-guest, .cover-type, .cover-brand { position: relative; z-index: 1; }
 .inv-cover-btn { margin-top: 2rem; padding: 0.75rem 2rem; border-radius: 9999px; border: 1px solid currentColor; background: rgba(255,255,255,0.15); backdrop-filter: blur(8px); font-size: 0.875rem; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; position: relative; z-index: 1; }
 .inv-countdown-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; max-width: 320px; margin: 1.5rem auto 0; }
@@ -172,7 +172,7 @@ export function buildExistingSectionSeed(
   <p class="cover-date" style="color:var(--inv-tag);opacity:0.85">{{event_date}}</p>
   <div class="cover-guest" style="margin-top:2rem">
     <p style="font-size:0.75rem;opacity:0.7">Kepada Yth. Bpk/Ibu/Saudara/i</p>
-    <p style="font-family:serif;font-size:1.25rem;font-weight:600;color:var(--inv-tag);margin-top:0.5rem">{{guest_name}}</p>
+    <p style="font-family:var(--inv-font);font-size:1.25rem;font-weight:600;color:var(--inv-tag);margin-top:0.5rem">{{guest_name}}</p>
     <p class="cover-type" style="font-size:0.75rem;opacity:0.6;color:var(--inv-tag)">{{guest_type}}</p>
   </div>
   <button type="button" class="inv-cover-btn" onclick="invitation.open()">Buka Undangan</button>
@@ -193,7 +193,7 @@ html, body { height: 100%; }`,
         `<p class="kicker">We are getting married</p>
   <h1 class="cover-title">{{event_name}}</h1>
   <p style="color:var(--inv-tag);opacity:0.85">{{event_date}}</p>
-  ${initial ? `<p style="font-family:serif;letter-spacing:0.3em;opacity:0.6;margin-top:1.5rem">-{{couple_initial}}-</p>` : ''}
+  ${initial ? `<p style="font-family:var(--inv-font);letter-spacing:0.3em;opacity:0.6;margin-top:1.5rem">-{{couple_initial}}-</p>` : ''}
   ${
     countdown
       ? `<p class="kicker" style="margin-top:2rem">Save the Date</p>
@@ -275,7 +275,7 @@ html, body { height: 100%; }`,
         const date = item.event_date ? esc(String(item.event_date)) : ''
         const time = [item.start_time, item.end_time].filter(Boolean).join(' – ')
         return `<div class="card" style="max-width:28rem;margin:0 auto 1.5rem">
-    <h3 style="font-family:serif;font-size:1.25rem;color:var(--inv-tag)">${esc(item.title)}</h3>
+    <h3 style="font-family:var(--inv-font);font-size:1.25rem;color:var(--inv-tag)">${esc(item.title)}</h3>
     <div class="inv-divider"></div>
     ${date ? `<p style="color:var(--inv-tag)">${date}</p>` : ''}
     ${time ? `<p style="opacity:0.8">${esc(time)}</p>` : ''}
@@ -301,7 +301,7 @@ html, body { height: 100%; }`,
     const items = (payload.love_stories ?? [])
       .map(
         (story) => `<div class="inv-timeline-item">
-    <h3 style="font-family:serif;color:var(--inv-tag)">${esc(story.title)}</h3>
+    <h3 style="font-family:var(--inv-font);color:var(--inv-tag)">${esc(story.title)}</h3>
     ${story.date_label ? `<p class="kicker" style="margin-top:0.25rem">${esc(story.date_label)}</p>` : ''}
     ${story.story ? `<p style="margin-top:0.5rem;font-size:0.9rem;opacity:0.85">${esc(story.story)}</p>` : ''}
   </div>`,
@@ -404,8 +404,8 @@ html, body { height: 100%; }`,
       html: sectionShell(
         `${titleHtml(settings, 'hosts')}
   <div class="host-cols">
-    ${groom ? `<div><h3 style="font-family:serif">Kel. Mempelai Pria</h3><ol>${groom}</ol></div>` : ''}
-    ${bride ? `<div><h3 style="font-family:serif">Kel. Mempelai Wanita</h3><ol>${bride}</ol></div>` : ''}
+    ${groom ? `<div><h3 style="font-family:var(--inv-font)">Kel. Mempelai Pria</h3><ol>${groom}</ol></div>` : ''}
+    ${bride ? `<div><h3 style="font-family:var(--inv-font)">Kel. Mempelai Wanita</h3><ol>${bride}</ol></div>` : ''}
   </div>`,
         settings,
         'hosts',

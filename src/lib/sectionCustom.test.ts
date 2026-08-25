@@ -11,7 +11,7 @@ import {
   SECTION_CUSTOM_SANDBOX,
   sectionCustomStarterHtml,
 } from './sectionCustom'
-import { buildExistingSectionSeed } from './sectionCustomSeed'
+import { buildExistingSectionSeed, EXISTING_SECTION_BASE_CSS } from './sectionCustomSeed'
 
 const payload = buildSectionCustomPayload(
   {
@@ -133,6 +133,44 @@ describe('buildSectionCustomSrcdoc', () => {
     })
     expect(doc).toContain('id="inv-visual-root"')
     expect(doc).toMatch(/html,body\{[^}]*background:transparent/)
+    expect(doc).toContain('color-scheme:normal')
+  })
+
+  it('applies full Tema typography, page background token, and web fonts in the iframe', () => {
+    const themed = {
+      ...payload,
+      theme: {
+        tagColor: '#c9a66b',
+        pageTextColor: '#f5e9dc',
+        fontFamily: "'Cormorant Garamond', Georgia, serif",
+        pageBackground: 'linear-gradient(to bottom, #2c1810, #1a1512, #0f0c0a)',
+        fontSize: '18px',
+        fontWeight: '500',
+        textAlign: 'center' as const,
+        letterSpacing: '0.02em',
+      } as typeof payload.theme,
+    }
+    const doc = buildSectionCustomSrcdoc({
+      sectionKey: 'hero',
+      html: '<p>x</p>',
+      css: '',
+      js: '',
+      libraries: [],
+      payload: themed,
+    })
+    expect(doc).toContain('--inv-page-bg:')
+    expect(doc).toContain('--inv-font-size:')
+    expect(doc).toContain('--inv-font-weight:')
+    expect(doc).toContain('--inv-align:')
+    expect(doc).toContain('--inv-tracking:')
+    expect(doc).toContain('font-size:var(--inv-font-size)')
+    expect(doc).toContain('font-weight:var(--inv-font-weight)')
+    expect(doc).toContain('text-align:var(--inv-align)')
+    expect(doc).toContain('letter-spacing:var(--inv-tracking)')
+    expect(doc).toContain('18px')
+    expect(doc).toContain('linear-gradient(to bottom, #2c1810, #1a1512, #0f0c0a)')
+    expect(doc).toContain('fonts.googleapis.com')
+    expect(doc).toContain('Cormorant+Garamond')
   })
 
   it('applies section Desain Visual: min-height, line-height, background, overlay', () => {
@@ -276,6 +314,14 @@ describe('buildExistingSectionSeed', () => {
     expect(seed.html).toContain('{{event_name}}')
     expect(seed.html).toContain('invitation.open()')
     expect(seed.html).toContain('Buka Undangan')
+  })
+
+  it('uses theme font CSS variables instead of hardcoded serif', () => {
+    expect(EXISTING_SECTION_BASE_CSS).toContain('font-family: var(--inv-font)')
+    expect(EXISTING_SECTION_BASE_CSS).not.toMatch(/font-family:\s*serif/)
+    const seed = buildExistingSectionSeed('schedule', {}, payload)
+    expect(seed.html).toContain('font-family:var(--inv-font)')
+    expect(seed.html).not.toContain('font-family:serif')
   })
 
   it('mirrors couple existing cards with name placeholders', () => {

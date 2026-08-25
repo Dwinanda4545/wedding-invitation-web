@@ -117,8 +117,22 @@ export function CustomSectionFrame({
       className="inv-custom-iframe"
       style={
         variant === 'cover'
-          ? { width: '100%', height: '100%', border: 0, background: 'transparent' }
-          : { width: '100%', height, border: 0, display: 'block', background: 'transparent' }
+          ? {
+              width: '100%',
+              height: '100%',
+              border: 0,
+              background: 'transparent',
+              colorScheme: 'normal',
+            }
+          : {
+              width: '100%',
+              height: minHeight ? Math.max(height, minHeight) : height,
+              minHeight,
+              border: 0,
+              display: 'block',
+              background: 'transparent',
+              colorScheme: 'normal',
+            }
       }
     />
   )
@@ -151,7 +165,19 @@ export function CustomSectionFrame({
   }
 
   return (
-    <div className={['inv-custom-frame', className].filter(Boolean).join(' ')}>
+    <div
+      className={['inv-custom-frame', className].filter(Boolean).join(' ')}
+      style={{
+        background: 'transparent',
+        ...(minHeight ? { minHeight } : {}),
+        ...(lineHeight
+          ? ({
+              lineHeight,
+              ['--inv-section-line-height' as string]: String(lineHeight),
+            } as CSSProperties)
+          : {}),
+      }}
+    >
       {iframe}
     </div>
   )

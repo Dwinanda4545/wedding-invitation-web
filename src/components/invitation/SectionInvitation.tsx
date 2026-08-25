@@ -16,6 +16,7 @@ import {
   getInvitationTheme,
   themePageStyle,
 } from '../../lib/invitationTemplates'
+import { toSectionCustomThemeBits } from '../../lib/sectionCustom'
 import { CoverSection } from './CoverSection'
 import { HeroSection } from './HeroSection'
 import { CoupleSection } from './CoupleSection'
@@ -120,11 +121,7 @@ export function SectionInvitation({
     ? { ...pageStyle, position: 'absolute' as const, inset: 0 }
     : pageStyle
 
-  const customTheme = {
-    tagColor: theme.style.tagColor,
-    pageTextColor: theme.style.pageTextColor,
-    fontFamily: theme.style.fontFamily,
-  }
+  const customTheme = toSectionCustomThemeBits(theme.style)
 
   const frameData = {
     ...data,
@@ -168,7 +165,11 @@ export function SectionInvitation({
       isSectionCustomMode(settings, builtinKey)
     ) {
       if (sections[builtinKey] === false) return null
-      return renderCustomFrame(builtinKey)
+      return (
+        <SectionBackgroundShell key={key} sectionKey={builtinKey} settings={settings}>
+          {renderCustomFrame(builtinKey)}
+        </SectionBackgroundShell>
+      )
     }
 
     switch (builtinKey) {
@@ -328,7 +329,9 @@ export function SectionInvitation({
           ].join(' ')}
         >
           {isSectionCustomMode(settings, 'hero') ? (
-            renderCustomFrame('hero')
+            <SectionBackgroundShell sectionKey="hero" settings={settings}>
+              {renderCustomFrame('hero')}
+            </SectionBackgroundShell>
           ) : (
             <SectionBackgroundShell sectionKey="hero" settings={settings}>
               <div className="mx-auto max-w-lg">

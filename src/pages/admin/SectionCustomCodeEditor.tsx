@@ -267,7 +267,14 @@ export function SectionCustomCodeEditor({
             <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-stone-500">
               Pratinjau section
             </p>
-            <div className="overflow-hidden rounded-lg border border-stone-200 bg-white">
+            <div
+              className="overflow-hidden rounded-lg border border-stone-200"
+              style={{
+                background: theme.pageBackground?.trim() || 'transparent',
+                color: theme.pageTextColor,
+                fontFamily: theme.fontFamily,
+              }}
+            >
               <CustomSectionFrame
                 sectionKey={sectionKey}
                 code={code}

@@ -19,10 +19,50 @@ export const SECTION_CUSTOM_MAX_LIBRARIES = 20
 export const SECTION_CUSTOM_SANDBOX =
   'allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox'
 
+/** Same families as index.html so iframe text matches Tema. */
+export const SECTION_CUSTOM_FONT_STYLESHEET =
+  'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap'
+
 export type SectionCustomThemeBits = {
   tagColor: string
   pageTextColor: string
   fontFamily: string
+  pageBackground?: string
+  fontSize?: string
+  fontWeight?: string
+  textAlign?: string
+  letterSpacing?: string
+}
+
+const THEME_FALLBACK: Required<SectionCustomThemeBits> = {
+  tagColor: '#be185d',
+  pageTextColor: '#1c1917',
+  fontFamily: 'serif',
+  pageBackground: 'transparent',
+  fontSize: '16px',
+  fontWeight: '400',
+  textAlign: 'center',
+  letterSpacing: 'normal',
+}
+
+export function toSectionCustomThemeBits(
+  style: Partial<SectionCustomThemeBits> | null | undefined,
+): Required<SectionCustomThemeBits> {
+  return {
+    tagColor: style?.tagColor?.trim() || THEME_FALLBACK.tagColor,
+    pageTextColor: style?.pageTextColor?.trim() || THEME_FALLBACK.pageTextColor,
+    fontFamily: style?.fontFamily?.trim() || THEME_FALLBACK.fontFamily,
+    pageBackground: style?.pageBackground?.trim() || THEME_FALLBACK.pageBackground,
+    fontSize: style?.fontSize?.trim() || THEME_FALLBACK.fontSize,
+    fontWeight: style?.fontWeight?.trim() || THEME_FALLBACK.fontWeight,
+    textAlign: style?.textAlign?.trim() || THEME_FALLBACK.textAlign,
+    letterSpacing: style?.letterSpacing?.trim() || THEME_FALLBACK.letterSpacing,
+  }
+}
+
+function buildThemeDocumentCss(theme: SectionCustomThemeBits): string {
+  const t = toSectionCustomThemeBits(theme)
+  return `:root{--inv-tag:${escapeHtml(t.tagColor)};--inv-text:${escapeHtml(t.pageTextColor)};--inv-font:${escapeHtml(t.fontFamily)};--inv-page-bg:${escapeHtml(t.pageBackground)};--inv-font-size:${escapeHtml(t.fontSize)};--inv-font-weight:${escapeHtml(t.fontWeight)};--inv-align:${escapeHtml(t.textAlign)};--inv-tracking:${escapeHtml(t.letterSpacing)};}html,body{margin:0;padding:0;color:var(--inv-text);font-family:var(--inv-font);font-size:var(--inv-font-size);font-weight:var(--inv-font-weight);text-align:var(--inv-align);letter-spacing:var(--inv-tracking);background:transparent;color-scheme:normal;} img{max-width:100%;height:auto;}`
 }
 
 export type SectionCustomPayload = {
@@ -164,7 +204,7 @@ export function buildSectionCustomPayload(
       rsvp_status: w.rsvp_status,
       created_at: w.created_at,
     })),
-    theme,
+    theme: toSectionCustomThemeBits(theme),
     cover_title: settings?.cover_title ?? '',
     cover_subtitle: settings?.cover_subtitle ?? '',
   }
@@ -344,8 +384,10 @@ export function buildSectionCustomSrcdoc(input: {
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="color-scheme" content="normal">
 <base target="_blank">
-<style>:root{--inv-tag:${escapeHtml(input.payload.theme.tagColor || '#be185d')};--inv-text:${escapeHtml(input.payload.theme.pageTextColor || '#1c1917')};--inv-font:${escapeHtml(input.payload.theme.fontFamily || 'serif')};}html,body{margin:0;padding:0;color:var(--inv-text);font-family:var(--inv-font);} img{max-width:100%;height:auto;}</style>
+<link rel="stylesheet" href="${escapeHtml(SECTION_CUSTOM_FONT_STYLESHEET)}">
+<style>${buildThemeDocumentCss(input.payload.theme)}</style>
 <style>${css}</style>
 <style>${chrome.css}</style>
 ${cssLinks}

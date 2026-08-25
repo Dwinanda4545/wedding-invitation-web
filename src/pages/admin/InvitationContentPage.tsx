@@ -54,6 +54,7 @@ import type {
   LoveStoryItem,
 } from '../../lib/invitationTypes'
 import { api } from '../../lib/api'
+import { toSectionCustomThemeBits } from '../../lib/sectionCustom'
 
 type Tab = 'settings' | 'theme' | 'couple' | 'schedules' | 'stories' | 'gallery' | 'hosts' | 'desain'
 
@@ -255,11 +256,7 @@ export function InvitationContentPage() {
     [templateId, customThemes],
   )
 
-  const customThemeBits = {
-    tagColor: activeTemplate.style.tagColor,
-    pageTextColor: activeTemplate.style.pageTextColor,
-    fontFamily: activeTemplate.style.fontFamily,
-  }
+  const customThemeBits = toSectionCustomThemeBits(activeTemplate.style)
 
   const previewInvitationData: InvitationResponse = useMemo(
     () => ({
@@ -522,6 +519,15 @@ export function InvitationContentPage() {
 
   async function uploadGallery(file: File | null) {
     if (!file || !Number.isFinite(eventId)) return
+
+    const maxBytes = 20 * 1024 * 1024
+    if (file.size > maxBytes) {
+      setError(
+        `Ukuran file ${(file.size / (1024 * 1024)).toFixed(1)}MB melebihi batas 20MB.`,
+      )
+      return
+    }
+
     const fd = new FormData()
     fd.append('image', file)
     try {
@@ -530,8 +536,12 @@ export function InvitationContentPage() {
       })
       await load()
       showToast('Foto diunggah.')
-    } catch {
-      setError('Gagal mengunggah foto.')
+    } catch (e) {
+      const apiMessage = axios.isAxiosError(e)
+        ? (e.response?.data?.errors?.image?.[0] as string | undefined) ||
+          (e.response?.data?.message as string | undefined)
+        : undefined
+      setError(apiMessage || 'Gagal mengunggah foto. Pastikan format gambar dan ukuran ≤ 20MB.')
     }
   }
 
@@ -1908,7 +1918,7 @@ export function InvitationContentPage() {
 
           <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
             <label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-stone-300 px-4 py-8 text-center text-sm text-stone-600 hover:bg-stone-50">
-              + Unggah foto galeri (max 2MB)
+              + Unggah foto galeri (max 20MB)
               <input
                 type="file"
                 accept="image/*"
