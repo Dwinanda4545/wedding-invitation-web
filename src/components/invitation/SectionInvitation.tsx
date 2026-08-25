@@ -139,6 +139,7 @@ export function SectionInvitation({
         code={getSectionCustom(settings, key)}
         data={frameData}
         theme={customTheme}
+        settings={settings}
         variant={variant}
         isOpen={coverOpen}
         coverStyle={{ ...coverStyle, padding: 0 }}

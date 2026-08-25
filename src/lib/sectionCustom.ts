@@ -1,10 +1,14 @@
 import {
+  getSectionBackground,
   getSectionCustom,
   guestTypeLabel,
   mergeCoupleInfo,
   mergeHosts,
+  SECTION_BG_LABELS,
   type InvitationResponse,
   type InvitationSettings,
+  type SectionBackground,
+  type SectionBgKey,
   type SectionCustomCode,
   type SectionCustomLibrary,
 } from './invitationTypes'
@@ -251,6 +255,63 @@ export function clampSectionCustomField(value: string): string {
   return value.slice(0, SECTION_CUSTOM_MAX_CHARS)
 }
 
+export function resolveSectionCustomVisual(
+  settings: InvitationSettings | undefined,
+  sectionKey: string,
+): SectionBackground | undefined {
+  if (!settings) return undefined
+  if (!(sectionKey in SECTION_BG_LABELS)) return undefined
+  return getSectionBackground(settings, sectionKey as SectionBgKey)
+}
+
+function buildVisualChrome(
+  visual: SectionBackground | undefined,
+  variant: 'content' | 'cover',
+): { css: string; open: string; close: string } {
+  const url = visual?.image_url?.trim() || ''
+  const hasImage = Boolean(url)
+  const minH =
+    typeof visual?.min_height_px === 'number' && visual.min_height_px > 0
+      ? visual.min_height_px
+      : 0
+  const lineH =
+    typeof visual?.line_height === 'number' && visual.line_height > 0
+      ? visual.line_height
+      : 0
+  const overlay = visual?.overlay ?? 0.25
+
+  const sizeRules =
+    variant === 'cover'
+      ? 'html,body,#inv-visual-root{height:100%;min-height:100%;}'
+      : minH
+        ? `html,body,#inv-visual-root{min-height:${minH}px;}`
+        : ''
+  const centerRules =
+    minH || variant === 'cover'
+      ? '#inv-visual-root{display:flex;flex-direction:column;justify-content:center;box-sizing:border-box;}'
+      : ''
+  const lineRules = lineH
+    ? `#inv-visual-root,.inv-visual-content{line-height:${lineH};}`
+    : ''
+  const hideSeedBg = hasImage ? '.bg-img,.bg-overlay{display:none !important;}' : ''
+
+  const css = `html,body{background:transparent;}#inv-visual-root{position:relative;width:100%;}#inv-visual-bg,#inv-visual-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;}#inv-visual-bg{object-fit:cover;}#inv-visual-overlay{background:#000;}#inv-visual-content{position:relative;z-index:1;width:100%;}${sizeRules}${centerRules}${lineRules}${hideSeedBg}`
+
+  let bgHtml = ''
+  if (hasImage) {
+    bgHtml = `<img id="inv-visual-bg" src="${escapeHtml(url)}" alt="">`
+    if (overlay > 0) {
+      bgHtml += `<div id="inv-visual-overlay" style="opacity:${Math.min(overlay, 0.85)}"></div>`
+    }
+  }
+
+  return {
+    css,
+    open: `<div id="inv-visual-root">${bgHtml}<div id="inv-visual-content" class="inv-visual-content">`,
+    close: `</div></div>`,
+  }
+}
+
 export function buildSectionCustomSrcdoc(input: {
   sectionKey: string
   html: string
@@ -258,6 +319,8 @@ export function buildSectionCustomSrcdoc(input: {
   js: string
   libraries: SectionCustomLibrary[]
   payload: SectionCustomPayload
+  visual?: SectionBackground
+  variant?: 'content' | 'cover'
 }): string {
   const libs = normalizeSectionCustomLibraries(input.libraries)
   const cssLinks = libs
@@ -274,6 +337,8 @@ export function buildSectionCustomSrcdoc(input: {
   const userJs = escapeClosingTag(input.js, 'script')
   const payloadJson = JSON.stringify(input.payload).replace(/</g, '\\u003c')
   const sectionKeyJson = JSON.stringify(input.sectionKey)
+  const variant = input.variant === 'cover' ? 'cover' : 'content'
+  const chrome = buildVisualChrome(input.visual, variant)
 
   return `<!DOCTYPE html>
 <html>
@@ -282,10 +347,13 @@ export function buildSectionCustomSrcdoc(input: {
 <base target="_blank">
 <style>:root{--inv-tag:${escapeHtml(input.payload.theme.tagColor || '#be185d')};--inv-text:${escapeHtml(input.payload.theme.pageTextColor || '#1c1917')};--inv-font:${escapeHtml(input.payload.theme.fontFamily || 'serif')};}html,body{margin:0;padding:0;color:var(--inv-text);font-family:var(--inv-font);} img{max-width:100%;height:auto;}</style>
 <style>${css}</style>
+<style>${chrome.css}</style>
 ${cssLinks}
 </head>
 <body>
+${chrome.open}
 ${bodyHtml}
+${chrome.close}
 <script>
 (function(){
   var sectionKey = ${sectionKeyJson};

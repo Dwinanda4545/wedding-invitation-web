@@ -7,6 +7,7 @@ import {
   isHttpsLibraryUrl,
   normalizeSectionCustomLibraries,
   patchSectionCustomSettings,
+  resolveSectionCustomVisual,
   SECTION_CUSTOM_SANDBOX,
   sectionCustomStarterHtml,
 } from './sectionCustom'
@@ -119,6 +120,120 @@ describe('buildSectionCustomSrcdoc', () => {
     expect(doc).toContain('"cover"')
     expect(doc.toLowerCase()).not.toContain('allow-same-origin')
     expect(SECTION_CUSTOM_SANDBOX.toLowerCase()).not.toContain('allow-same-origin')
+  })
+
+  it('keeps the iframe document transparent so page-level Desain Visual shows through', () => {
+    const doc = buildSectionCustomSrcdoc({
+      sectionKey: 'couple',
+      html: '<section class="inv-section">ok</section>',
+      css: '',
+      js: '',
+      libraries: [],
+      payload,
+    })
+    expect(doc).toContain('id="inv-visual-root"')
+    expect(doc).toMatch(/html,body\{[^}]*background:transparent/)
+  })
+
+  it('applies section Desain Visual: min-height, line-height, background, overlay', () => {
+    const doc = buildSectionCustomSrcdoc({
+      sectionKey: 'couple',
+      html: '<section class="inv-section"><p>Mempelai</p></section>',
+      css: '',
+      js: '',
+      libraries: [],
+      payload,
+      visual: {
+        image_url: 'https://cdn.example/couple-bg.jpg',
+        overlay: 0.4,
+        min_height_px: 800,
+        line_height: 1.6,
+      },
+    })
+    expect(doc).toContain('min-height:800px')
+    expect(doc).toContain('line-height:1.6')
+    expect(doc).toContain('https://cdn.example/couple-bg.jpg')
+    expect(doc).toContain('opacity:0.4')
+    expect(doc).toContain('justify-content:center')
+    expect(doc).toContain('class="inv-visual-content"')
+    expect(doc).toContain('Mempelai')
+  })
+
+  it('hides seeded .bg-img/.bg-overlay when Visual Design supplies a section image', () => {
+    const doc = buildSectionCustomSrcdoc({
+      sectionKey: 'couple',
+      html: '<img class="bg-img" src="https://old.example/stale.jpg" alt="">',
+      css: '',
+      js: '',
+      libraries: [],
+      payload,
+      visual: { image_url: 'https://cdn.example/fresh.jpg', overlay: 0.2 },
+    })
+    expect(doc).toMatch(/\.bg-img,\s*\.bg-overlay\{display:none/)
+    expect(doc).toContain('https://cdn.example/fresh.jpg')
+  })
+
+  it('escapes the visual background URL', () => {
+    const doc = buildSectionCustomSrcdoc({
+      sectionKey: 'hero',
+      html: '<p>x</p>',
+      css: '',
+      js: '',
+      libraries: [],
+      payload,
+      visual: { image_url: 'https://cdn.example/a.jpg"><script>alert(1)</script>' },
+    })
+    expect(doc).not.toContain('<script>alert(1)</script>')
+    expect(doc).toContain('&quot;')
+  })
+
+  it('fills cover iframe to 100% height so cover min-height from Desain Visual can apply on the wrapper', () => {
+    const doc = buildSectionCustomSrcdoc({
+      sectionKey: 'cover',
+      html: '<div class="cover-root">x</div>',
+      css: '',
+      js: '',
+      libraries: [],
+      payload,
+      variant: 'cover',
+      visual: { min_height_px: 640 },
+    })
+    expect(doc).toContain('height:100%')
+    expect(doc).toContain('id="inv-visual-root"')
+  })
+})
+
+describe('resolveSectionCustomVisual', () => {
+  it('reads Desain Visual section_backgrounds for builtin keys', () => {
+    const visual = resolveSectionCustomVisual(
+      {
+        section_backgrounds: {
+          couple: {
+            image_url: 'https://cdn.example/bg.jpg',
+            overlay: 0.3,
+            min_height_px: 640,
+            line_height: 1.5,
+          },
+        },
+      },
+      'couple',
+    )
+    expect(visual?.image_url).toBe('https://cdn.example/bg.jpg')
+    expect(visual?.min_height_px).toBe(640)
+    expect(visual?.line_height).toBe(1.5)
+  })
+
+  it('ignores custom section keys that have no Desain Visual slot', () => {
+    expect(
+      resolveSectionCustomVisual(
+        {
+          section_backgrounds: {
+            couple: { min_height_px: 400 },
+          },
+        },
+        'custom:abc',
+      ),
+    ).toBeUndefined()
   })
 })
 

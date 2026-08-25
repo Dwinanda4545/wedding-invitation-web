@@ -337,6 +337,11 @@
 
 .inv-custom-frame {
   width: 100%;
+  background: transparent;
+}
+
+.inv-custom-iframe {
+  background: transparent;
 }
 
 .inv-cover > .inv-custom-iframe,

@@ -273,6 +273,7 @@ export function SectionCustomCodeEditor({
                 code={code}
                 data={data}
                 theme={theme}
+                settings={settings}
                 variant={sectionKey === 'cover' ? 'cover' : 'content'}
                 isOpen={false}
                 previewEmbed
