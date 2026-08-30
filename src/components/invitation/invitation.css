@@ -12,26 +12,23 @@
   min-height: inherit;
 }
 
-/* Mode mobile: kanvas tetap 720px, di-scale agar muat di HP */
+/* Mode mobile: kanvas 720px — full-bleed di HP, kolom max 720px di PC */
 .invitation-shell.inv-viewport-mobile {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  display: block;
+  width: 100%;
   min-height: 100dvh;
   overflow-x: hidden;
 }
 
 .invitation-shell.inv-viewport-mobile .inv-viewport-scale {
-  width: 100%;
-  display: flex;
-  justify-content: center;
+  overflow: hidden;
 }
 
 .invitation-shell.inv-viewport-mobile .inv-viewport-frame {
   width: var(--inv-mobile-width);
   max-width: var(--inv-mobile-width);
   min-height: calc(100dvh / var(--inv-mobile-scale, 1));
-  margin: 0 auto;
+  margin: 0;
   overflow: visible;
 }
 

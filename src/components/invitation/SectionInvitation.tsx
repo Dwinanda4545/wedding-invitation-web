@@ -86,11 +86,16 @@ export function SectionInvitation({
       return
     }
     function updateScale() {
-      setMobileScale(mobileCanvasScale(window.innerWidth))
+      // clientWidth excludes scrollbar; matches visible layout width
+      setMobileScale(mobileCanvasScale(document.documentElement.clientWidth))
     }
     updateScale()
     window.addEventListener('resize', updateScale)
-    return () => window.removeEventListener('resize', updateScale)
+    window.visualViewport?.addEventListener('resize', updateScale)
+    return () => {
+      window.removeEventListener('resize', updateScale)
+      window.visualViewport?.removeEventListener('resize', updateScale)
+    }
   }, [isMobileViewport])
 
   useEffect(() => {
@@ -110,6 +115,8 @@ export function SectionInvitation({
       : {}),
   }
 
+  const mobileDisplayWidth = Math.round(MOBILE_VIEWPORT_WIDTH * mobileScale)
+
   const frameStyle = isMobileViewport
     ? {
         ...pageStyle,
@@ -117,7 +124,7 @@ export function SectionInvitation({
         maxWidth: MOBILE_VIEWPORT_WIDTH,
         minHeight: `calc(100dvh / ${mobileScale})`,
         transform: mobileScale < 1 ? `scale(${mobileScale})` : undefined,
-        transformOrigin: 'top center',
+        transformOrigin: 'top left',
         ['--inv-mobile-scale' as string]: String(mobileScale),
       }
     : previewMode
@@ -127,6 +134,7 @@ export function SectionInvitation({
   const shellStyle = isMobileViewport
     ? {
         minHeight: '100dvh',
+        width: '100%',
         background: theme.style.pageBackground,
         ['--inv-mobile-scale' as string]: String(mobileScale),
         overflowX: 'hidden' as const,
@@ -336,8 +344,16 @@ export function SectionInvitation({
       <div
         className="inv-viewport-scale"
         style={
-          isMobileViewport && mobileScale < 1 && mobileFrameHeight > 0
-            ? { height: mobileFrameHeight * mobileScale }
+          isMobileViewport
+            ? {
+                width: mobileDisplayWidth,
+                maxWidth: '100%',
+                margin: '0 auto',
+                overflow: 'hidden',
+                ...(mobileScale < 1 && mobileFrameHeight > 0
+                  ? { height: mobileFrameHeight * mobileScale }
+                  : {}),
+              }
             : undefined
         }
       >

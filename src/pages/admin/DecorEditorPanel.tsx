@@ -211,8 +211,8 @@ export function DecorEditorPanel({
       <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
         <h3 className="font-semibold text-stone-900">Rasio tampilan</h3>
         <p className="mt-1 text-xs text-stone-500">
-          Mode Mobile memakai kanvas 720px lalu di-scale ke lebar HP, agar asset
-          dan layout sama dengan preview. Existing = lebar penuh seperti sebelumnya.
+          Mode Mobile: kanvas 720px full-bleed di HP; di PC tetap max 720px di
+          tengah (tidak membesar). Existing = lebar penuh seperti sebelumnya.
         </p>
         <div className="mt-4 grid grid-cols-2 gap-2">
           {(

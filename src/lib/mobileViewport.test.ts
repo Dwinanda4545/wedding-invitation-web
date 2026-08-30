@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { MOBILE_VIEWPORT_WIDTH, mobileCanvasScale } from './mobileViewport'
 
 describe('mobileCanvasScale', () => {
-  it('keeps scale 1 on screens wider than the canvas', () => {
+  it('does not upscale on screens wider than the canvas', () => {
     expect(mobileCanvasScale(1280)).toBe(1)
     expect(mobileCanvasScale(MOBILE_VIEWPORT_WIDTH)).toBe(1)
   })
