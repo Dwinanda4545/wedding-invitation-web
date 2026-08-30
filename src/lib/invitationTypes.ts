@@ -421,6 +421,7 @@ export type InvitationGuestData = {
   qr_code_url?: string | null
   is_attended?: boolean
   scanned_at?: string | null
+  wish?: InvitationWish | null
 }
 
 export type InvitationResponse = {

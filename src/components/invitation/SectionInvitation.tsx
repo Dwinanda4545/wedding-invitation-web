@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { DecorAsset, InvitationResponse } from '../../lib/invitationTypes'
 import {
   formatEventDate,
@@ -31,10 +31,8 @@ import { SakuraAnimation } from './SakuraAnimation'
 import { MusicPlayer, type MusicPlayerHandle } from './MusicPlayer'
 import { DecorLayers } from './DecorLayers'
 import { SectionBackgroundShell } from './SectionBackgroundShell'
+import { MOBILE_VIEWPORT_WIDTH, mobileCanvasScale } from '../../lib/mobileViewport'
 import './invitation.css'
-
-/** Lebar kanvas mobile — selaras dengan preview panel admin */
-export const MOBILE_VIEWPORT_WIDTH = 720
 
 type Props = {
   data: InvitationResponse
@@ -78,6 +76,32 @@ export function SectionInvitation({
   const sectionOrder = resolveSectionOrder(settings)
   const viewportMode = settings.viewport_mode ?? 'existing'
   const isMobileViewport = viewportMode === 'mobile' && !previewMode
+  const frameRef = useRef<HTMLDivElement>(null)
+  const [mobileScale, setMobileScale] = useState(1)
+  const [mobileFrameHeight, setMobileFrameHeight] = useState(0)
+
+  useLayoutEffect(() => {
+    if (!isMobileViewport) {
+      setMobileScale(1)
+      return
+    }
+    function updateScale() {
+      setMobileScale(mobileCanvasScale(window.innerWidth))
+    }
+    updateScale()
+    window.addEventListener('resize', updateScale)
+    return () => window.removeEventListener('resize', updateScale)
+  }, [isMobileViewport])
+
+  useEffect(() => {
+    if (!isMobileViewport || !frameRef.current) return
+    const el = frameRef.current
+    const syncHeight = () => setMobileFrameHeight(el.scrollHeight)
+    syncHeight()
+    const observer = new ResizeObserver(syncHeight)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [isMobileViewport, coverOpen, wishes, mobileScale])
 
   const pageStyle = {
     ...themePageStyle(theme),
@@ -89,9 +113,12 @@ export function SectionInvitation({
   const frameStyle = isMobileViewport
     ? {
         ...pageStyle,
-        width: '100%',
+        width: MOBILE_VIEWPORT_WIDTH,
         maxWidth: MOBILE_VIEWPORT_WIDTH,
-        minHeight: '100vh',
+        minHeight: `calc(100dvh / ${mobileScale})`,
+        transform: mobileScale < 1 ? `scale(${mobileScale})` : undefined,
+        transformOrigin: 'top center',
+        ['--inv-mobile-scale' as string]: String(mobileScale),
       }
     : previewMode
       ? pageStyle
@@ -99,15 +126,20 @@ export function SectionInvitation({
 
   const shellStyle = isMobileViewport
     ? {
-        minHeight: '100vh',
+        minHeight: '100dvh',
         background: theme.style.pageBackground,
+        ['--inv-mobile-scale' as string]: String(mobileScale),
+        overflowX: 'hidden' as const,
       }
     : pageStyle
 
   const showSakura = data.event.invitation_template === 'cherry-blossom'
 
-  function handleWishAdded(wish: (typeof wishes)[number]) {
-    setWishes((prev) => [wish, ...prev])
+  function handleWishChanged(wish: (typeof wishes)[number]) {
+    setWishes((prev) => {
+      const rest = prev.filter((item) => item.id !== wish.id)
+      return [wish, ...rest]
+    })
   }
 
   function handleOpenCover() {
@@ -117,9 +149,15 @@ export function SectionInvitation({
 
   const contentVisible = !settings.cover_enabled || coverOpen
 
-  const coverStyle = isMobileViewport || previewMode
-    ? { ...pageStyle, position: 'absolute' as const, inset: 0 }
-    : pageStyle
+  const coverStyle = isMobileViewport
+    ? {
+        ...pageStyle,
+        minHeight: `calc(100dvh / ${mobileScale})`,
+        height: `calc(100dvh / ${mobileScale})`,
+      }
+    : previewMode
+      ? { ...pageStyle, position: 'absolute' as const, inset: 0 }
+      : pageStyle
 
   const customTheme = toSectionCustomThemeBits(theme.style)
 
@@ -241,7 +279,8 @@ export function SectionInvitation({
                 secretToken={secretToken}
                 guestName={data.guest.name}
                 wishes={wishes}
-                onWishAdded={handleWishAdded}
+                myWish={data.guest.wish}
+                onWishChanged={handleWishChanged}
                 tagColor={theme.style.tagColor}
                 title={sectionTitle.text}
                 showTitle={sectionTitle.show}
@@ -294,7 +333,15 @@ export function SectionInvitation({
         .join(' ')}
       style={shellStyle}
     >
-      <div className="inv-viewport-frame" style={frameStyle}>
+      <div
+        className="inv-viewport-scale"
+        style={
+          isMobileViewport && mobileScale < 1 && mobileFrameHeight > 0
+            ? { height: mobileFrameHeight * mobileScale }
+            : undefined
+        }
+      >
+      <div ref={frameRef} className="inv-viewport-frame" style={frameStyle}>
         <DecorLayers
           settings={settings}
           previewMode={previewMode}
@@ -367,6 +414,7 @@ export function SectionInvitation({
             Undangan Digital
           </footer>
         </div>
+      </div>
       </div>
 
       {!previewMode && !editDecor && (

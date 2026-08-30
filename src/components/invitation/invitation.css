@@ -12,26 +12,39 @@
   min-height: inherit;
 }
 
-/* Mode mobile: kanvas tetap ~720px agar asset % sama dengan preview HP */
+/* Mode mobile: kanvas tetap 720px, di-scale agar muat di HP */
 .invitation-shell.inv-viewport-mobile {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  min-height: 100vh;
-  /* background letterbox di-set dari theme.pageBackground via inline style */
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+.invitation-shell.inv-viewport-mobile .inv-viewport-scale {
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 .invitation-shell.inv-viewport-mobile .inv-viewport-frame {
-  width: 100%;
+  width: var(--inv-mobile-width);
   max-width: var(--inv-mobile-width);
-  min-height: 100vh;
+  min-height: calc(100dvh / var(--inv-mobile-scale, 1));
   margin: 0 auto;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .invitation-shell.inv-viewport-mobile .inv-cover {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: auto;
+  width: 100%;
+  height: calc(100dvh / var(--inv-mobile-scale, 1));
+  min-height: calc(100dvh / var(--inv-mobile-scale, 1));
+  inset: auto;
 }
 
 /* Preview di admin: isi penuh frame, cover tidak fixed ke viewport browser */
