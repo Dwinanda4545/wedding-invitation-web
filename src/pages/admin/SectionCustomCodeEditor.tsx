@@ -136,6 +136,8 @@ export function SectionCustomCodeEditor({
             HTML/CSS/JS jalan di iframe terisolasi. Placeholder:{' '}
             <code className="rounded bg-stone-100 px-1">{'{{guest_name}}'}</code>,{' '}
             <code className="rounded bg-stone-100 px-1">{'{{groom_name}}'}</code>,{' '}
+            <code className="rounded bg-stone-100 px-1">{'{{bride_name}}'}</code>,{' '}
+            <code className="rounded bg-stone-100 px-1">{'{{groom_photo}}'}</code>,{' '}
             <code className="rounded bg-stone-100 px-1">{'{{gallery_json}}'}</code>.
             JS memakai <code className="rounded bg-stone-100 px-1">invitation.data</code>
             {sectionKey === 'cover' ? (

@@ -84,6 +84,22 @@ describe('applySectionCustomPlaceholders', () => {
     expect(parsed[0]?.image_url).toContain('cdn.example')
   })
 
+  it('fills couple photo placeholders from uploaded photo_url', () => {
+    const html = applySectionCustomPlaceholders(
+      '<img src="{{groom_photo}}"><img src="{{bride_photo}}">',
+      {
+        ...payload,
+        couple: {
+          ...payload.couple,
+          groom: { ...payload.couple.groom, photo_url: 'https://cdn.example/groom.jpg' },
+          bride: { ...payload.couple.bride, photo_url: 'https://cdn.example/bride.jpg' },
+        },
+      },
+    )
+    expect(html).toContain('https://cdn.example/groom.jpg')
+    expect(html).toContain('https://cdn.example/bride.jpg')
+  })
+
   it('leaves unknown tokens unchanged', () => {
     expect(applySectionCustomPlaceholders('{{nope}}', payload)).toBe('{{nope}}')
   })

@@ -250,6 +250,9 @@ export function InvitationContentPage() {
   const [customForm, setCustomForm] = useState<CustomFormState>(EMPTY_CUSTOM_FORM)
   const [savingCustom, setSavingCustom] = useState(false)
   const [uploadingMusic, setUploadingMusic] = useState(false)
+  const [uploadingCouplePhoto, setUploadingCouplePhoto] = useState<
+    'groom' | 'bride' | null
+  >(null)
 
   const activeTemplate = useMemo(
     () => getInvitationTheme(templateId, null, customThemes),
@@ -597,6 +600,31 @@ export function InvitationContentPage() {
       ...prev,
       [side]: { ...prev[side], [field]: value },
     }))
+  }
+
+  async function uploadCouplePhoto(side: 'groom' | 'bride', file: File | null) {
+    if (!file || !Number.isFinite(eventId)) return
+    setUploadingCouplePhoto(side)
+    setError(null)
+    const fd = new FormData()
+    fd.append('file', file)
+    try {
+      const { data } = await api.post<{ data: { url: string } }>(
+        `/api/events/${eventId}/decor`,
+        fd,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+      )
+      updatePerson(side, 'photo_url', data.data.url)
+      showToast(
+        side === 'groom'
+          ? 'Foto mempelai pria diunggah. Klik "Simpan mempelai".'
+          : 'Foto mempelai wanita diunggah. Klik "Simpan mempelai".',
+      )
+    } catch {
+      setError('Gagal mengunggah foto mempelai. Gunakan JPG/PNG/WEBP (maks 5MB).')
+    } finally {
+      setUploadingCouplePhoto(null)
+    }
   }
 
   function toggleSection(key: BuiltinSectionKey) {
@@ -1535,25 +1563,91 @@ export function InvitationContentPage() {
             theme={customThemeBits}
           >
           <div className="grid gap-6 md:grid-cols-2">
-            {(['groom', 'bride'] as const).map((side) => (
-              <div key={side} className="space-y-3">
-                <h3 className="font-semibold text-stone-900">
-                  {side === 'groom' ? 'Mempelai Pria' : 'Mempelai Wanita'}
-                </h3>
-                {(['nickname', 'full_name', 'father', 'mother', 'city', 'photo_url'] as const).map(
-                  (field) => (
+            {(['groom', 'bride'] as const).map((side) => {
+              const photoUrl = coupleInfo[side]?.photo_url?.trim() || ''
+              const uploading = uploadingCouplePhoto === side
+              const fieldLabels: Record<
+                'nickname' | 'full_name' | 'father' | 'mother' | 'city',
+                string
+              > = {
+                nickname: 'Nama panggilan',
+                full_name: 'Nama lengkap',
+                father: 'Nama ayah',
+                mother: 'Nama ibu',
+                city: 'Kota',
+              }
+              return (
+                <div key={side} className="space-y-3">
+                  <h3 className="font-semibold text-stone-900">
+                    {side === 'groom' ? 'Mempelai Pria' : 'Mempelai Wanita'}
+                  </h3>
+                  {(
+                    ['nickname', 'full_name', 'father', 'mother', 'city'] as const
+                  ).map((field) => (
                     <div key={field}>
-                      <label className="text-xs text-stone-500">{field.replace('_', ' ')}</label>
+                      <label className="text-xs text-stone-500">
+                        {fieldLabels[field]}
+                      </label>
                       <input
                         className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm"
                         value={coupleInfo[side]?.[field] ?? ''}
                         onChange={(e) => updatePerson(side, field, e.target.value)}
                       />
                     </div>
-                  ),
-                )}
-              </div>
-            ))}
+                  ))}
+                  <div>
+                    <label className="text-xs text-stone-500">Foto</label>
+                    <div className="mt-2 flex items-start gap-3">
+                      {photoUrl ? (
+                        <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border border-stone-200 bg-stone-50">
+                          <img
+                            src={photoUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => updatePerson(side, 'photo_url', '')}
+                            className="absolute right-0.5 top-0.5 rounded-full bg-white/90 px-1.5 text-[10px] font-medium text-red-600 shadow-sm"
+                            title="Hapus foto"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-stone-300 bg-stone-50 text-[10px] text-stone-400">
+                          Belum ada
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <label className="inline-flex cursor-pointer items-center rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50">
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            className="hidden"
+                            disabled={uploading}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] ?? null
+                              e.target.value = ''
+                              void uploadCouplePhoto(side, file)
+                            }}
+                          />
+                          {uploading
+                            ? 'Mengunggah…'
+                            : photoUrl
+                              ? 'Ganti foto'
+                              : 'Unggah foto'}
+                        </label>
+                        <p className="text-[11px] text-stone-400">
+                          JPG/PNG/WEBP, maks 5MB. Foto terpakai di mode Existing
+                          dan Custom code.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
