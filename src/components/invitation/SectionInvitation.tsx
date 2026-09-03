@@ -24,6 +24,7 @@ import { ScheduleSection } from './ScheduleSection'
 import { LoveStorySection } from './LoveStorySection'
 import { GallerySection } from './GallerySection'
 import { WishesSection } from './WishesSection'
+import { DigitalEnvelopeSection } from './DigitalEnvelopeSection'
 import { HostsSection } from './HostsSection'
 import { QrSection } from './QrSection'
 import { CustomSection } from './CustomSection'
@@ -32,12 +33,14 @@ import { MusicPlayer, type MusicPlayerHandle } from './MusicPlayer'
 import { DecorLayers } from './DecorLayers'
 import { SectionBackgroundShell } from './SectionBackgroundShell'
 import { MOBILE_VIEWPORT_WIDTH, mobileCanvasScale } from '../../lib/mobileViewport'
+import type { EnvelopePaymentResult } from '../../lib/envelopeTypes'
 import './invitation.css'
 
 type Props = {
   data: InvitationResponse
   secretToken: string
   previewMode?: boolean
+  paymentResult?: EnvelopePaymentResult
   /** Mode edit asset dekoratif (geser di full preview admin) */
   editDecor?: boolean
   onDecorAssetsChange?: (assets: DecorAsset[]) => void
@@ -47,6 +50,7 @@ export function SectionInvitation({
   data,
   secretToken,
   previewMode = false,
+  paymentResult = null,
   editDecor = false,
   onDecorAssetsChange,
 }: Props) {
@@ -203,6 +207,7 @@ export function SectionInvitation({
       | 'gallery'
       | 'wishes'
       | 'hosts'
+      | 'digital_envelope'
       | 'qr'
     const sectionTitle = getSectionTitle(settings, builtinKey)
 
@@ -303,6 +308,23 @@ export function SectionInvitation({
             <div className="mx-auto max-w-lg">
               <HostsSection
                 hosts={hosts}
+                tagColor={theme.style.tagColor}
+                title={sectionTitle.text}
+                showTitle={sectionTitle.show}
+              />
+            </div>
+          </SectionBackgroundShell>
+        )
+      case 'digital_envelope':
+        if (sections.digital_envelope !== true) return null
+        return (
+          <SectionBackgroundShell key={key} sectionKey="digital_envelope" settings={settings}>
+            <div className="mx-auto max-w-lg">
+              <DigitalEnvelopeSection
+                secretToken={secretToken}
+                guestName={data.guest.name}
+                envelopeSettings={settings.digital_envelope}
+                paymentResult={paymentResult}
                 tagColor={theme.style.tagColor}
                 title={sectionTitle.text}
                 showTitle={sectionTitle.show}

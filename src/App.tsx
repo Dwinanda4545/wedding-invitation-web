@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage'
 import { EventsPage } from './pages/admin/EventsPage'
 import { GuestsPage } from './pages/admin/GuestsPage'
 import { InvitationContentPage } from './pages/admin/InvitationContentPage'
+import { EnvelopeTransactionsPage } from './pages/admin/EnvelopeTransactionsPage'
 import { ScannerPage } from './pages/admin/ScannerPage'
 import { InvitationPage } from './pages/public/InvitationPage'
 
@@ -24,6 +25,7 @@ export default function App() {
             <Route element={<AdminLayout />}>
               <Route path="/admin/events" element={<EventsPage />} />
               <Route path="/admin/events/:id/invitation" element={<InvitationContentPage />} />
+              <Route path="/admin/events/:id/envelopes" element={<EnvelopeTransactionsPage />} />
               <Route path="/admin/events/:id/guests" element={<GuestsPage />} />
               <Route path="/admin/scanner" element={<ScannerPage />} />
             </Route>

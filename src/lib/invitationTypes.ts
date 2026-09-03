@@ -1,3 +1,6 @@
+import type { DigitalEnvelopeSettings } from './envelopeTypes'
+import { mergeDigitalEnvelopeSettings } from './envelopeTypes'
+
 export type PersonInfo = {
   nickname?: string
   full_name?: string
@@ -21,6 +24,7 @@ export type SectionVisibility = {
   gallery?: boolean
   wishes?: boolean
   hosts?: boolean
+  digital_envelope?: boolean
   qr?: boolean
 }
 
@@ -52,6 +56,7 @@ export const BUILTIN_SECTION_KEYS: BuiltinSectionKey[] = [
   'gallery',
   'wishes',
   'hosts',
+  'digital_envelope',
   'qr',
 ]
 
@@ -62,6 +67,7 @@ export const BUILTIN_SECTION_LABELS: Record<BuiltinSectionKey, string> = {
   gallery: 'Galeri',
   wishes: 'Doa & Ucapan',
   hosts: 'Turut Mengundang',
+  digital_envelope: 'Amplop Digital',
   qr: 'QR Check-in',
 }
 
@@ -159,6 +165,7 @@ export type SectionBgKey =
   | 'gallery'
   | 'wishes'
   | 'hosts'
+  | 'digital_envelope'
   | 'qr'
 
 export type SectionBackground = {
@@ -265,6 +272,7 @@ export type InvitationSettings = {
   /** Pengaturan Splide untuk section Galeri */
   gallery_slider?: GallerySliderSettings
   decor_assets?: DecorAsset[]
+  digital_envelope?: DigitalEnvelopeSettings
   viewport_mode?: ViewportMode
   /**
    * Mode 2 per section: HTML/CSS/JS + libraries.
@@ -352,6 +360,7 @@ export const SECTION_BG_LABELS: Record<SectionBgKey, string> = {
   gallery: 'Galeri',
   wishes: 'Doa & Ucapan',
   hosts: 'Turut Mengundang',
+  digital_envelope: 'Amplop Digital',
   qr: 'QR Check-in',
 }
 
@@ -451,6 +460,7 @@ export const DEFAULT_INVITATION_SETTINGS: InvitationSettings = {
     gallery: true,
     wishes: true,
     hosts: true,
+    digital_envelope: false,
     qr: true,
   },
   section_titles: {},
@@ -491,6 +501,7 @@ export function mergeSettings(
     decor_assets: partial?.decor_assets ?? [],
     section_backgrounds: partial?.section_backgrounds ?? {},
     gallery_slider: mergeGallerySlider(partial?.gallery_slider),
+    digital_envelope: mergeDigitalEnvelopeSettings(partial?.digital_envelope),
     section_custom: partial?.section_custom ?? {},
   }
 

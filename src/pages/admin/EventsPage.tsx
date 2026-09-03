@@ -218,6 +218,12 @@ export function EventsPage() {
                     >
                       Tamu
                     </Link>
+                    <Link
+                      to={`/admin/events/${ev.id}/envelopes`}
+                      className="rounded-lg bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                    >
+                      Amplop
+                    </Link>
                     <button
                       type="button"
                       className="rounded-lg border border-stone-200 px-3 py-1 text-xs text-stone-700 hover:bg-stone-50"

@@ -6,6 +6,10 @@ import { QrSection } from '../../components/invitation/QrSection'
 import { SectionInvitation } from '../../components/invitation/SectionInvitation'
 import type { InvitationResponse } from '../../lib/invitationTypes'
 import {
+  parseEnvelopePaymentResult,
+  type EnvelopePaymentResult,
+} from '../../lib/envelopeTypes'
+import {
   getInvitationTheme,
   replaceInvitationVariables,
   themePageStyle,
@@ -16,6 +20,17 @@ export function InvitationPage() {
   const { secret_token } = useParams<{ secret_token: string }>()
   const [data, setData] = useState<InvitationResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [paymentResult, setPaymentResult] = useState<EnvelopePaymentResult>(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const result = parseEnvelopePaymentResult(params)
+    if (result) {
+      setPaymentResult(result)
+      const cleanUrl = `${window.location.pathname}`
+      window.history.replaceState({}, '', cleanUrl)
+    }
+  }, [])
 
   useEffect(() => {
     if (!secret_token) return
@@ -112,6 +127,7 @@ export function InvitationPage() {
       <SectionInvitation
         data={data}
         secretToken={secret_token}
+        paymentResult={paymentResult}
       />
     )
   }
