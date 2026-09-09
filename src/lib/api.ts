@@ -1,8 +1,10 @@
 import axios from 'axios'
 
-const baseURL =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ??
-  'http://localhost:8000'
+// Empty = same origin (Vite proxy). Prefer this locally for Sanctum CSRF.
+const configured = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '')
+const baseURL = configured === undefined || configured === ''
+  ? ''
+  : configured
 
 function readCookie(name: string): string | null {
   const prefix = `${name}=`

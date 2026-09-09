@@ -191,6 +191,7 @@ export function SectionInvitation({
         isOpen={coverOpen}
         coverStyle={{ ...coverStyle, padding: 0 }}
         onOpenCover={handleOpenCover}
+        paymentResult={paymentResult}
         onError={(message) => {
           if (previewMode) return
           console.warn(`[invitation ${key}]`, message)

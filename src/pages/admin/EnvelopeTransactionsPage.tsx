@@ -26,17 +26,28 @@ export function EnvelopeTransactionsPage() {
   const eventId = id ?? ''
 
   const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [payload, setPayload] = useState<EnvelopeTransactionsResponse | null>(null)
+  const [syncNote, setSyncNote] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { sync?: boolean; silent?: boolean }) => {
     if (!eventId) return
+    const shouldSync = opts?.sync !== false
     setError(null)
+    if (!opts?.silent) setLoading(true)
+    if (shouldSync) setSyncing(true)
     try {
-      const { data } = await api.get<EnvelopeTransactionsResponse>(
+      const { data } = await api.get<EnvelopeTransactionsResponse & { synced?: number }>(
         `/api/events/${eventId}/envelope-transactions`,
+        { params: { sync: shouldSync ? 1 : 0 } },
       )
       setPayload(data)
+      if (typeof data.synced === 'number' && data.synced > 0) {
+        setSyncNote(`${data.synced} transaksi diperbarui dari DOKU.`)
+      } else if (shouldSync) {
+        setSyncNote(null)
+      }
     } catch (e) {
       if (axios.isAxiosError(e) && e.response?.status === 401) {
         setError('Sesi berakhir. Silakan masuk lagi.')
@@ -45,6 +56,7 @@ export function EnvelopeTransactionsPage() {
       }
     } finally {
       setLoading(false)
+      setSyncing(false)
     }
   }, [eventId])
 
@@ -73,14 +85,29 @@ export function EnvelopeTransactionsPage() {
             Daftar transaksi amplop digital tamu (hanya admin).
           </p>
         </div>
-        <Link
-          to={`/admin/events/${eventId}/invitation`}
-          className="rounded-lg border border-stone-200 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50"
-        >
-          Pengaturan Undangan
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => void load({ sync: true, silent: true })}
+            disabled={syncing}
+            className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 disabled:opacity-60"
+          >
+            {syncing ? 'Menyinkronkan…' : 'Sinkronkan DOKU'}
+          </button>
+          <Link
+            to={`/admin/events/${eventId}/invitation`}
+            className="rounded-lg border border-stone-200 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50"
+          >
+            Pengaturan Undangan
+          </Link>
+        </div>
       </div>
 
+      {syncNote && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          {syncNote}
+        </div>
+      )}
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           {error}

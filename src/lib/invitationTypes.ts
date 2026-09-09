@@ -317,6 +317,7 @@ export const SECTION_CUSTOM_ELIGIBLE_KEYS = [
   'gallery',
   'wishes',
   'hosts',
+  'digital_envelope',
 ] as const
 
 export type SectionCustomEligibleKey =

@@ -7,7 +7,7 @@ import {
   type CreateEnvelopeResponse,
   type EnvelopePaymentResult,
 } from '../../lib/envelopeTypes'
-import { api } from '../../lib/api'
+import { api, ensureCsrfCookie } from '../../lib/api'
 import { SectionTitle } from './SectionTitle'
 
 type Props = {
@@ -60,6 +60,7 @@ export function DigitalEnvelopeSection({
     setError(null)
 
     try {
+      await ensureCsrfCookie()
       const { data } = await api.post<CreateEnvelopeResponse>(
         `/api/invitation/${secretToken}/digital-envelopes`,
         {

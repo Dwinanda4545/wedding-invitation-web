@@ -12,6 +12,10 @@ import {
   type SectionCustomCode,
   type SectionCustomLibrary,
 } from './invitationTypes'
+import {
+  mergeDigitalEnvelopeSettings,
+  type EnvelopePaymentResult,
+} from './envelopeTypes'
 import { buildExistingSectionSeed, isGenericStarterHtml } from './sectionCustomSeed'
 
 export const SECTION_CUSTOM_MAX_CHARS = 200_000
@@ -84,6 +88,12 @@ export type SectionCustomPayload = {
     rsvp_status: string
     created_at?: string
   }>
+  envelope: {
+    presets: number[]
+    min_amount: number
+    max_amount: number
+    payment_result: EnvelopePaymentResult
+  }
   theme: SectionCustomThemeBits
   cover_title: string
   cover_subtitle: string
@@ -179,9 +189,11 @@ function escapeClosingTag(value: string, tag: string): string {
 export function buildSectionCustomPayload(
   data: InvitationResponse,
   theme: SectionCustomThemeBits,
+  extras?: { paymentResult?: EnvelopePaymentResult | null },
 ): SectionCustomPayload {
   const couple = mergeCoupleInfo(data.event.couple_info)
   const settings = data.event.invitation_settings
+  const envelope = mergeDigitalEnvelopeSettings(settings?.digital_envelope)
   return {
     guest: {
       name: data.guest.name,
@@ -204,6 +216,12 @@ export function buildSectionCustomPayload(
       rsvp_status: w.rsvp_status,
       created_at: w.created_at,
     })),
+    envelope: {
+      presets: envelope.presets,
+      min_amount: envelope.min_amount,
+      max_amount: envelope.max_amount,
+      payment_result: extras?.paymentResult ?? null,
+    },
     theme: toSectionCustomThemeBits(theme),
     cover_title: settings?.cover_title ?? '',
     cover_subtitle: settings?.cover_subtitle ?? '',
@@ -245,6 +263,7 @@ export function applySectionCustomPlaceholders(
     love_stories_json: payload.love_stories,
     hosts_json: payload.hosts,
     wishes_json: payload.wishes,
+    envelope_json: payload.envelope,
   }
 
   return html.replace(/\{\{\s*([a-z0-9_]+)\s*\}\}/gi, (full, rawKey: string) => {
@@ -260,8 +279,12 @@ export function sectionCustomStarterHtml(sectionKey: string): string {
     sectionKey === 'cover'
       ? `\n  <p><button type="button" onclick="invitation.open()">Buka Undangan</button></p>`
       : ''
+  const envelopeHint =
+    sectionKey === 'digital_envelope'
+      ? `\n<!-- Amplop: invitation.createEnvelope({ sender_name, amount, message }) → Promise payment_url -->`
+      : ''
   return `<!-- Placeholder: {{guest_name}} {{nama_tamu}} {{groom_name}} {{bride_name}} {{event_name}} {{event_date}} {{gallery_json}} -->
-<!-- JS: gunakan invitation.data. Cover: invitation.open() untuk buka undangan + musik -->
+<!-- JS: gunakan invitation.data. Cover: invitation.open() untuk buka undangan + musik -->${envelopeHint}
 <section>
   <h1>{{event_name}}</h1>
   <p>Kepada Yth. {{guest_name}}</p>${coverHint}
@@ -409,7 +432,23 @@ ${chrome.close}
   window.invitation = {
     sectionKey: sectionKey,
     data: ${payloadJson},
-    open: function() { post('open-cover'); }
+    open: function() { post('open-cover'); },
+    createEnvelope: function(payload) {
+      return new Promise(function(resolve, reject) {
+        var requestId = 'env-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9);
+        function onHost(event) {
+          var msg = event.data;
+          if (!msg || msg.source !== 'inv-host' || msg.requestId !== requestId) return;
+          window.removeEventListener('message', onHost);
+          if (msg.type === 'create-envelope-result') {
+            if (msg.ok) resolve(msg.data || {});
+            else reject(new Error(msg.message || 'Gagal memproses amplop digital.'));
+          }
+        }
+        window.addEventListener('message', onHost);
+        post('create-envelope', { requestId: requestId, payload: payload || {} });
+      });
+    }
   };
   window.onerror = function(msg) {
     post('error', { message: String(msg) });

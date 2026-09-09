@@ -416,6 +416,95 @@ html, body { height: 100%; }`,
     }
   }
 
+  if (sectionKey === 'digital_envelope') {
+    const presets = (payload.envelope?.presets ?? [50000, 100000, 200000])
+      .map(
+        (n) =>
+          `<button type="button" class="env-preset" data-amount="${n}">${n.toLocaleString('id-ID')}</button>`,
+      )
+      .join('\n    ')
+    return {
+      html: sectionShell(
+        `${titleHtml(settings, 'digital_envelope')}
+  <div id="env-status" class="card" style="max-width:28rem;margin:0 auto;display:none"></div>
+  <form id="env-form" class="card" style="max-width:28rem;margin:0 auto;text-align:left">
+    <label style="display:block;font-size:0.75rem;opacity:0.75">Nama pengirim</label>
+    <input id="env-name" name="sender_name" value="{{guest_name}}" style="width:100%;margin:0.25rem 0 0.75rem;padding:0.5rem;border-radius:0.5rem;border:1px solid rgba(0,0,0,0.15)">
+    <label style="display:block;font-size:0.75rem;opacity:0.75">Nominal (Rp)</label>
+    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:0.5rem 0">${presets}</div>
+    <input id="env-amount" name="amount" type="number" placeholder="Atau isi nominal lain" style="width:100%;margin:0.25rem 0 0.75rem;padding:0.5rem;border-radius:0.5rem;border:1px solid rgba(0,0,0,0.15)">
+    <label style="display:block;font-size:0.75rem;opacity:0.75">Ucapan (opsional)</label>
+    <textarea id="env-message" name="message" rows="3" style="width:100%;margin:0.25rem 0 0.75rem;padding:0.5rem;border-radius:0.5rem;border:1px solid rgba(0,0,0,0.15)"></textarea>
+    <p id="env-error" style="color:#b91c1c;font-size:0.85rem;display:none"></p>
+    <button type="submit" id="env-submit" class="inv-cover-btn" style="width:100%;margin-top:0.5rem">Kirim Amplop</button>
+  </form>`,
+        settings,
+        'digital_envelope',
+      ),
+      css: `${EXISTING_SECTION_BASE_CSS}
+.env-preset { border-radius:9999px;border:1px solid currentColor;padding:0.35rem 0.85rem;background:rgba(255,255,255,0.2);cursor:pointer;font-size:0.8rem; }
+.env-preset.is-active { background:var(--inv-tag);color:#fff;border-color:transparent; }`,
+      js: `(function(){
+  var env = (invitation.data && invitation.data.envelope) || {};
+  var form = document.getElementById('env-form');
+  var status = document.getElementById('env-status');
+  var err = document.getElementById('env-error');
+  var amountInput = document.getElementById('env-amount');
+  var submitBtn = document.getElementById('env-submit');
+  var selected = null;
+  function showStatus(title, body) {
+    if (!status) return;
+    if (form) form.style.display = 'none';
+    status.style.display = 'block';
+    status.innerHTML = '<p style="font-size:1.1rem;font-weight:600">' + title + '</p><p style="margin-top:0.5rem;font-size:0.9rem;opacity:0.85">' + body + '</p>';
+  }
+  if (env.payment_result === 'success') {
+    showStatus('Terima kasih!', 'Amplop digital Anda telah kami terima.');
+    return;
+  }
+  if (env.payment_result === 'pending') {
+    showStatus('Menunggu pembayaran', 'Selesaikan pembayaran di halaman pembayaran.');
+    return;
+  }
+  document.querySelectorAll('.env-preset').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.env-preset').forEach(function(b){ b.classList.remove('is-active'); });
+      btn.classList.add('is-active');
+      selected = Number(btn.getAttribute('data-amount') || 0);
+      if (amountInput) amountInput.value = String(selected);
+    });
+  });
+  if (!form) return;
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    if (err) { err.style.display = 'none'; err.textContent = ''; }
+    var amount = selected || Number((amountInput && amountInput.value) || 0);
+    var min = Number(env.min_amount || 10000);
+    var max = Number(env.max_amount || 10000000);
+    if (!amount || amount < min || amount > max) {
+      if (err) { err.style.display = 'block'; err.textContent = 'Nominal tidak valid.'; }
+      return;
+    }
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Memproses…'; }
+    invitation.createEnvelope({
+      sender_name: (document.getElementById('env-name') || {}).value || '',
+      amount: amount,
+      message: (document.getElementById('env-message') || {}).value || null,
+      sender_email: null,
+      sender_phone: null
+    }).then(function(res){
+      if (res && res.payment_url) window.top.location.href = res.payment_url;
+      else throw new Error('payment_url kosong');
+    }).catch(function(ex){
+      if (err) { err.style.display = 'block'; err.textContent = String(ex && ex.message ? ex.message : ex); }
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Kirim Amplop'; }
+    });
+  });
+})();`,
+      libraries: [],
+    }
+  }
+
   return {
     html: `<section class="inv-section">
   <h1>{{event_name}}</h1>

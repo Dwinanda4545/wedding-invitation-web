@@ -84,6 +84,13 @@ describe('applySectionCustomPlaceholders', () => {
     expect(parsed[0]?.image_url).toContain('cdn.example')
   })
 
+  it('inserts raw JSON for envelope_json', () => {
+    const html = applySectionCustomPlaceholders('{{envelope_json}}', payload)
+    const parsed = JSON.parse(html) as { presets: number[]; min_amount: number }
+    expect(parsed.presets).toEqual([50000, 100000, 200000])
+    expect(parsed.min_amount).toBe(10000)
+  })
+
   it('fills couple photo placeholders from uploaded photo_url', () => {
     const html = applySectionCustomPlaceholders(
       '<img src="{{groom_photo}}"><img src="{{bride_photo}}">',
@@ -118,6 +125,15 @@ describe('buildSectionCustomPayload', () => {
       payload,
     })
     expect(doc).toContain('--inv-tag')
+  })
+
+  it('includes envelope config for custom amplop sections', () => {
+    expect(payload.envelope).toEqual({
+      presets: [50000, 100000, 200000],
+      min_amount: 10000,
+      max_amount: 10000000,
+      payment_result: null,
+    })
   })
 })
 
@@ -317,6 +333,10 @@ describe('sectionCustomStarterHtml', () => {
     expect(sectionCustomStarterHtml('cover')).toContain('invitation.open()')
     expect(sectionCustomStarterHtml('couple')).not.toContain('onclick="invitation.open()"')
   })
+
+  it('mentions createEnvelope for digital_envelope', () => {
+    expect(sectionCustomStarterHtml('digital_envelope')).toContain('createEnvelope')
+  })
 })
 
 describe('buildExistingSectionSeed', () => {
@@ -353,6 +373,14 @@ describe('buildExistingSectionSeed', () => {
     expect(seed.libraries.some((l) => l.src.includes('splide'))).toBe(true)
     expect(seed.js).toContain('new Splide')
   })
+
+  it('seeds digital_envelope with form and createEnvelope bridge', () => {
+    const seed = buildExistingSectionSeed('digital_envelope', {}, payload)
+    expect(seed.html).toContain('id="env-form"')
+    expect(seed.html).toContain('sender_name')
+    expect(seed.html).toContain('data-amount="50000"')
+    expect(seed.js).toContain('invitation.createEnvelope')
+  })
 })
 
 describe('patchSectionCustomSettings', () => {
@@ -366,6 +394,18 @@ describe('patchSectionCustomSettings', () => {
     expect(next.section_custom?.cover?.mode).toBe('custom')
     expect(next.section_custom?.cover?.html).toContain('Buka Undangan')
     expect(next.section_custom?.cover?.html).toContain('{{guest_name}}')
+  })
+
+  it('allows digital_envelope custom mode and seeds amplop markup', () => {
+    const next = patchSectionCustomSettings(
+      {},
+      'digital_envelope',
+      { mode: 'custom' },
+      payload,
+    )
+    expect(next.section_custom?.digital_envelope?.mode).toBe('custom')
+    expect(next.section_custom?.digital_envelope?.html).toContain('id="env-form"')
+    expect(next.section_custom?.digital_envelope?.js).toContain('createEnvelope')
   })
 })
 

@@ -145,6 +145,14 @@ export function SectionCustomCodeEditor({
                 . Cover: <code className="rounded bg-stone-100 px-1">invitation.open()</code>
               </>
             ) : null}
+            {sectionKey === 'digital_envelope' ? (
+              <>
+                . Amplop:{' '}
+                <code className="rounded bg-stone-100 px-1">
+                  {"invitation.createEnvelope({ sender_name, amount })"}
+                </code>
+              </>
+            ) : null}
           </p>
 
           <div className="flex flex-wrap gap-1">

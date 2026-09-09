@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
+import axios from 'axios'
 import type {
   InvitationResponse,
   InvitationSettings,
@@ -12,6 +13,11 @@ import {
   SECTION_CUSTOM_SANDBOX,
   type SectionCustomThemeBits,
 } from '../../lib/sectionCustom'
+import { api, ensureCsrfCookie } from '../../lib/api'
+import type {
+  CreateEnvelopeResponse,
+  EnvelopePaymentResult,
+} from '../../lib/envelopeTypes'
 
 type Props = {
   sectionKey: string
@@ -27,6 +33,7 @@ type Props = {
   className?: string
   /** Admin editor: jangan pakai position:fixed milik .inv-cover */
   previewEmbed?: boolean
+  paymentResult?: EnvelopePaymentResult
 }
 
 type FrameMessage = {
@@ -35,6 +42,8 @@ type FrameMessage = {
   type?: string
   height?: number
   message?: string
+  requestId?: string
+  payload?: Record<string, unknown>
 }
 
 export function CustomSectionFrame({
@@ -50,16 +59,18 @@ export function CustomSectionFrame({
   onError,
   className,
   previewEmbed = false,
+  paymentResult = null,
 }: Props) {
   const [height, setHeight] = useState(120)
+  const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const onOpenCoverRef = useRef(onOpenCover)
   const onErrorRef = useRef(onError)
   onOpenCoverRef.current = onOpenCover
   onErrorRef.current = onError
 
   const payload = useMemo(
-    () => buildSectionCustomPayload(data, theme),
-    [data, theme],
+    () => buildSectionCustomPayload(data, theme, { paymentResult }),
+    [data, theme, paymentResult],
   )
   const visual = useMemo(
     () => resolveSectionCustomVisual(settings, sectionKey),
@@ -82,6 +93,76 @@ export function CustomSectionFrame({
   )
 
   useEffect(() => {
+    function replyCreateEnvelope(
+      requestId: string | undefined,
+      result: { ok: true; data: unknown } | { ok: false; message: string },
+    ) {
+      if (!requestId) return
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          source: 'inv-host',
+          requestId,
+          type: 'create-envelope-result',
+          ...result,
+        },
+        '*',
+      )
+    }
+
+    async function handleCreateEnvelope(msg: FrameMessage) {
+      const secretToken = data.guest.secret_token
+      if (!secretToken) {
+        replyCreateEnvelope(msg.requestId, {
+          ok: false,
+          message: 'Token undangan tidak tersedia.',
+        })
+        return
+      }
+      if (previewEmbed) {
+        replyCreateEnvelope(msg.requestId, {
+          ok: false,
+          message: 'Preview admin: pembayaran tidak dijalankan.',
+        })
+        return
+      }
+
+      const body = (msg.payload ?? {}) as {
+        sender_name?: string
+        sender_email?: string | null
+        sender_phone?: string | null
+        amount?: number
+        message?: string | null
+      }
+
+      try {
+        await ensureCsrfCookie()
+        const { data: res } = await api.post<CreateEnvelopeResponse>(
+          `/api/invitation/${secretToken}/digital-envelopes`,
+          {
+            sender_name: String(body.sender_name ?? data.guest.name ?? '').trim() || data.guest.name,
+            sender_email: body.sender_email ?? null,
+            sender_phone: body.sender_phone ?? null,
+            amount: Number(body.amount ?? 0),
+            message: body.message ?? null,
+          },
+        )
+        replyCreateEnvelope(msg.requestId, { ok: true, data: res.data })
+      } catch (err) {
+        let message = 'Gagal memproses amplop digital.'
+        if (axios.isAxiosError(err)) {
+          if (err.response?.status === 403) {
+            message = 'Amplop digital tidak tersedia untuk undangan ini.'
+          } else if (err.response?.status === 422) {
+            const errors = err.response.data?.errors as Record<string, string[]> | undefined
+            message = (errors ? Object.values(errors).flat()[0] : null) ?? 'Data tidak valid.'
+          } else if (err.response?.status === 503) {
+            message = 'Layanan pembayaran sedang tidak tersedia. Coba lagi.'
+          }
+        }
+        replyCreateEnvelope(msg.requestId, { ok: false, message })
+      }
+    }
+
     function onMessage(event: MessageEvent<FrameMessage>) {
       const msg = event.data
       if (!msg || msg.source !== 'inv-section') return
@@ -92,13 +173,16 @@ export function CustomSectionFrame({
       if (msg.type === 'open-cover') {
         if (sectionKey === 'cover') onOpenCoverRef.current?.()
       }
+      if (msg.type === 'create-envelope' && sectionKey === 'digital_envelope') {
+        void handleCreateEnvelope(msg)
+      }
       if (msg.type === 'error' && msg.message) {
         onErrorRef.current?.(msg.message)
       }
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [sectionKey])
+  }, [sectionKey, data.guest.secret_token, data.guest.name, previewEmbed])
 
   const minHeight =
     typeof visual?.min_height_px === 'number' && visual.min_height_px > 0
@@ -111,6 +195,7 @@ export function CustomSectionFrame({
 
   const iframe = (
     <iframe
+      ref={iframeRef}
       title={`Section ${sectionKey}`}
       sandbox={SECTION_CUSTOM_SANDBOX}
       srcDoc={srcdoc}
