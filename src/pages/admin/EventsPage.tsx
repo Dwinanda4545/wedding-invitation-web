@@ -219,6 +219,12 @@ export function EventsPage() {
                       Tamu
                     </Link>
                     <Link
+                      to={`/admin/events/${ev.id}/panitia`}
+                      className="rounded-lg bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-800 hover:bg-violet-100"
+                    >
+                      Panitia
+                    </Link>
+                    <Link
                       to={`/admin/events/${ev.id}/envelopes`}
                       className="rounded-lg bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
                     >

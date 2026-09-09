@@ -9,16 +9,25 @@ import {
 } from 'react'
 import { api, ensureCsrfCookie } from '../lib/api'
 
+export type AssignedEvent = {
+  id: number
+  name: string
+}
+
 export type AuthUser = {
   id: number
   name: string
   email: string
+  role: 'admin' | 'panitia'
+  assigned_events: AssignedEvent[]
 }
 
 type AuthContextValue = {
   user: AuthUser | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
+  isAdmin: boolean
+  isPanitia: boolean
+  login: (email: string, password: string) => Promise<AuthUser>
   logout: () => Promise<void>
   refreshMe: () => Promise<void>
 }
@@ -49,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
     })
     setUser(data.user)
+    return data.user
   }, [])
 
   const logout = useCallback(async () => {
@@ -63,7 +73,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, loading, login, logout, refreshMe }),
+    () => ({
+      user,
+      loading,
+      isAdmin: user?.role === 'admin',
+      isPanitia: user?.role === 'panitia',
+      login,
+      logout,
+      refreshMe,
+    }),
     [user, loading, login, logout, refreshMe],
   )
 

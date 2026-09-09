@@ -22,6 +22,8 @@
     "ckeditor5": "^48.4.0",
     "dompurify": "^3.4.11",
     "html5-qrcode": "^2.3.8",
+    "laravel-echo": "^2.5.0",
+    "pusher-js": "^8.6.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.15.0"

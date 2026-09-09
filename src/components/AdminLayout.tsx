@@ -10,7 +10,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
   ].join(' ')
 
 export function AdminLayout() {
-  const { logout, user } = useAuth()
+  const { logout, user, isAdmin } = useAuth()
   const navigate = useNavigate()
 
   return (
@@ -18,33 +18,50 @@ export function AdminLayout() {
       <aside className="hidden w-56 shrink-0 border-r border-stone-200 bg-white px-4 py-6 md:block">
         <div className="mb-8 px-2">
           <div className="text-xs uppercase tracking-wide text-stone-400">
-            Admin
+            {isAdmin ? 'Admin' : 'Panitia'}
           </div>
           <div className="font-semibold text-stone-900">Undangan Digital</div>
         </div>
         <nav className="flex flex-col gap-1">
-          <NavLink to="/admin/events" className={linkClass}>
-            Acara
-          </NavLink>
+          {isAdmin ? (
+            <>
+              <NavLink to="/admin/events" className={linkClass}>
+                Acara
+              </NavLink>
+              <NavLink to="/admin/users" className={linkClass}>
+                Users
+              </NavLink>
+            </>
+          ) : null}
           <NavLink to="/admin/scanner" className={linkClass}>
             Scan Check-in
           </NavLink>
+          <NavLink to="/admin/guestbook" className={linkClass}>
+            Buku Tamu
+          </NavLink>
         </nav>
-        <p className="mt-6 px-2 text-xs leading-relaxed text-stone-400">
-          Kelola tema, HTML, dan section undangan lewat tombol{' '}
-          <span className="font-medium text-stone-500">Undangan</span> pada
-          setiap acara.
-        </p>
+        {isAdmin ? (
+          <p className="mt-6 px-2 text-xs leading-relaxed text-stone-400">
+            Kelola tema, HTML, dan section undangan lewat tombol{' '}
+            <span className="font-medium text-stone-500">Undangan</span> pada
+            setiap acara.
+          </p>
+        ) : null}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-stone-200 bg-white px-4 py-3 md:px-8">
           <div className="md:hidden">
-            <div className="text-sm font-semibold text-stone-900">Admin</div>
+            <div className="text-sm font-semibold text-stone-900">
+              {isAdmin ? 'Admin' : 'Panitia'}
+            </div>
           </div>
           <div className="ml-auto flex items-center gap-3">
             <span className="hidden text-sm text-stone-600 sm:inline">
               {user?.name}
+              {user?.role ? (
+                <span className="ml-1 text-xs text-stone-400">({user.role})</span>
+              ) : null}
             </span>
             <button
               type="button"
@@ -63,17 +80,32 @@ export function AdminLayout() {
         </main>
 
         <nav className="sticky bottom-0 flex justify-around border-t border-stone-200 bg-white px-2 py-2 md:hidden">
-          <NavLink
-            to="/admin/events"
-            className={({ isActive }) =>
-              [
-                'flex-1 rounded-lg py-2 text-center text-xs font-medium',
-                isActive ? 'bg-rose-50 text-rose-900' : 'text-stone-600',
-              ].join(' ')
-            }
-          >
-            Acara
-          </NavLink>
+          {isAdmin ? (
+            <>
+              <NavLink
+                to="/admin/events"
+                className={({ isActive }) =>
+                  [
+                    'flex-1 rounded-lg py-2 text-center text-xs font-medium',
+                    isActive ? 'bg-rose-50 text-rose-900' : 'text-stone-600',
+                  ].join(' ')
+                }
+              >
+                Acara
+              </NavLink>
+              <NavLink
+                to="/admin/users"
+                className={({ isActive }) =>
+                  [
+                    'flex-1 rounded-lg py-2 text-center text-xs font-medium',
+                    isActive ? 'bg-rose-50 text-rose-900' : 'text-stone-600',
+                  ].join(' ')
+                }
+              >
+                Users
+              </NavLink>
+            </>
+          ) : null}
           <NavLink
             to="/admin/scanner"
             className={({ isActive }) =>
@@ -84,6 +116,17 @@ export function AdminLayout() {
             }
           >
             Scan
+          </NavLink>
+          <NavLink
+            to="/admin/guestbook"
+            className={({ isActive }) =>
+              [
+                'flex-1 rounded-lg py-2 text-center text-xs font-medium',
+                isActive ? 'bg-rose-50 text-rose-900' : 'text-stone-600',
+              ].join(' ')
+            }
+          >
+            Buku Tamu
           </NavLink>
         </nav>
       </div>

@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export function LoginPage() {
-  const { user, login } = useAuth()
+  const { user, login, isAdmin } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('admin@example.com')
   const [password, setPassword] = useState('password')
@@ -11,7 +11,7 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false)
 
   if (user) {
-    return <Navigate to="/admin/events" replace />
+    return <Navigate to={isAdmin ? '/admin/events' : '/admin/scanner'} replace />
   }
 
   async function onSubmit(e: FormEvent) {
@@ -19,8 +19,8 @@ export function LoginPage() {
     setError(null)
     setBusy(true)
     try {
-      await login(email, password)
-      navigate('/admin/events')
+      const loggedIn = await login(email, password)
+      navigate(loggedIn.role === 'admin' ? '/admin/events' : '/admin/scanner')
     } catch {
       setError('Email atau kata sandi salah.')
     } finally {

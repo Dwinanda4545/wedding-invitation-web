@@ -1,12 +1,15 @@
 import axios from 'axios'
 import { Html5QrcodeScanner } from 'html5-qrcode'
 import { useEffect, useRef, useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
 import { api } from '../../lib/api'
 
 type ToastState =
   | { kind: 'idle' }
   | { kind: 'success'; title: string; subtitle?: string }
   | { kind: 'error'; title: string; subtitle?: string }
+
+type EventOption = { id: number; name: string }
 
 function parseToken(text: string): string {
   const t = text.trim()
@@ -16,10 +19,36 @@ function parseToken(text: string): string {
 }
 
 export function ScannerPage() {
+  const { user, isAdmin } = useAuth()
+  const [events, setEvents] = useState<EventOption[]>([])
+  const [eventId, setEventId] = useState<number | ''>('')
   const [toast, setToast] = useState<ToastState>({ kind: 'idle' })
   const busyRef = useRef(false)
+  const eventIdRef = useRef<number | ''>('')
 
   useEffect(() => {
+    eventIdRef.current = eventId
+  }, [eventId])
+
+  useEffect(() => {
+    if (isAdmin) {
+      void api
+        .get<{ data: EventOption[] }>('/api/events')
+        .then((res) => setEvents(res.data.data.map((e) => ({ id: e.id, name: e.name }))))
+    } else {
+      setEvents(user?.assigned_events ?? [])
+    }
+  }, [isAdmin, user?.assigned_events])
+
+  useEffect(() => {
+    if (events.length === 1 && eventId === '') {
+      setEventId(events[0].id)
+    }
+  }, [events, eventId])
+
+  useEffect(() => {
+    if (!eventId) return
+
     const scanner = new Html5QrcodeScanner(
       'qr-reader',
       {
@@ -31,6 +60,15 @@ export function ScannerPage() {
     )
     const onScan = async (decodedText: string) => {
       if (busyRef.current) return
+      const selectedEventId = eventIdRef.current
+      if (!selectedEventId) {
+        setToast({
+          kind: 'error',
+          title: 'Pilih acara dulu',
+          subtitle: 'Check-in membutuhkan acara aktif.',
+        })
+        return
+      }
       const token = parseToken(decodedText)
       if (!token) return
 
@@ -40,7 +78,10 @@ export function ScannerPage() {
           success: boolean
           message: string
           guest?: { name?: string }
-        }>('/api/check-in', { secret_token: token })
+        }>('/api/check-in', {
+          secret_token: token,
+          event_id: selectedEventId,
+        })
 
         if (data.success) {
           setToast({
@@ -60,13 +101,25 @@ export function ScannerPage() {
           setToast({
             kind: 'error',
             title: 'QR tidak valid',
-            subtitle: 'Token tidak dikenali.',
+            subtitle: 'Token tidak dikenali untuk acara ini.',
+          })
+        } else if (axios.isAxiosError(e) && e.response?.status === 403) {
+          setToast({
+            kind: 'error',
+            title: 'Akses ditolak',
+            subtitle: 'Anda tidak punya akses ke acara ini.',
           })
         } else if (axios.isAxiosError(e) && e.response?.status === 401) {
           setToast({
             kind: 'error',
             title: 'Belum masuk',
             subtitle: 'Silakan login ulang.',
+          })
+        } else if (axios.isAxiosError(e) && e.response?.status === 422) {
+          setToast({
+            kind: 'error',
+            title: 'Data tidak lengkap',
+            subtitle: 'Pastikan acara sudah dipilih.',
           })
         } else {
           setToast({
@@ -87,7 +140,7 @@ export function ScannerPage() {
     return () => {
       void scanner.clear().catch(() => {})
     }
-  }, [])
+  }, [eventId])
 
   useEffect(() => {
     if (toast.kind === 'idle') return
@@ -98,36 +151,52 @@ export function ScannerPage() {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div>
-        <h1 className="font-serif text-2xl font-semibold text-stone-900">
-          Scan check-in
-        </h1>
-        <p className="text-sm text-stone-600">
-          Arahkan kamera ke QR tamu. Token akan dikirim ke server untuk
-          verifikasi.
+        <h1 className="text-xl font-semibold text-stone-900">Scan Check-in</h1>
+        <p className="mt-1 text-sm text-stone-600">
+          Pilih acara, lalu scan QR undangan tamu.
         </p>
       </div>
 
-      <div
-        id="qr-reader"
-        className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm [&_*]:font-sans"
-      />
+      <div>
+        <label className="text-xs font-medium text-stone-600">Acara</label>
+        <select
+          className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm"
+          value={eventId}
+          onChange={(e) => setEventId(e.target.value ? Number(e.target.value) : '')}
+        >
+          <option value="">Pilih acara…</option>
+          {events.map((ev) => (
+            <option key={ev.id} value={ev.id}>
+              {ev.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      {toast.kind !== 'idle' && (
+      {!eventId ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Pilih acara sebelum mengaktifkan kamera.
+        </p>
+      ) : (
         <div
-          role="status"
+          id="qr-reader"
+          className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm"
+        />
+      )}
+
+      {toast.kind !== 'idle' ? (
+        <div
           className={[
-            'fixed inset-x-4 top-6 z-50 mx-auto max-w-lg rounded-2xl px-6 py-6 text-center shadow-2xl sm:inset-x-auto sm:left-1/2 sm:w-full sm:-translate-x-1/2',
+            'rounded-xl border px-4 py-3 text-sm',
             toast.kind === 'success'
-              ? 'bg-emerald-600 text-white'
-              : 'bg-red-600 text-white',
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+              : 'border-rose-200 bg-rose-50 text-rose-900',
           ].join(' ')}
         >
-          <div className="text-2xl font-bold tracking-tight">{toast.title}</div>
-          {toast.subtitle && (
-            <div className="mt-2 text-lg opacity-95">{toast.subtitle}</div>
-          )}
+          <div className="font-semibold">{toast.title}</div>
+          {toast.subtitle ? <div className="mt-0.5 opacity-80">{toast.subtitle}</div> : null}
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

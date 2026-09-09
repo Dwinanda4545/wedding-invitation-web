@@ -25,6 +25,10 @@ export default defineConfig({
         target: apiTarget,
         changeOrigin: true,
       },
+      '/broadcasting': {
+        target: apiTarget,
+        changeOrigin: true,
+      },
     },
   },
 })
