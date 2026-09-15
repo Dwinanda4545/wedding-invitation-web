@@ -380,6 +380,7 @@ describe('buildExistingSectionSeed', () => {
     expect(seed.html).toContain('sender_name')
     expect(seed.html).toContain('data-amount="50000"')
     expect(seed.js).toContain('invitation.createEnvelope')
+    expect(seed.js).not.toContain('window.top.location')
   })
 })
 

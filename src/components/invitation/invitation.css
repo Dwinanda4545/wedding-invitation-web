@@ -189,15 +189,48 @@
 }
 
 .inv-animate-fade-up {
-  animation: inv-fade-up 0.8s ease both;
+  animation: inv-fade-up 0.55s ease both;
 }
 
 .inv-animate-fade-in {
-  animation: inv-fade-in 0.6s ease both;
+  animation: inv-fade-in 0.45s ease both;
 }
 
 .inv-animate-scale-in {
-  animation: inv-scale-in 0.7s ease both;
+  animation: inv-scale-in 0.55s ease both;
+}
+
+/* Stagger section entrances after cover open (avoid all animating at t=0). */
+.inv-content.is-revealed > *:nth-child(1) .inv-animate-fade-up,
+.inv-content.is-revealed > *:nth-child(1).inv-animate-fade-up {
+  animation-delay: 0.05s;
+}
+.inv-content.is-revealed > *:nth-child(2) .inv-animate-fade-up,
+.inv-content.is-revealed > *:nth-child(2).inv-animate-fade-up {
+  animation-delay: 0.12s;
+}
+.inv-content.is-revealed > *:nth-child(3) .inv-animate-fade-up,
+.inv-content.is-revealed > *:nth-child(3).inv-animate-fade-up {
+  animation-delay: 0.2s;
+}
+.inv-content.is-revealed > *:nth-child(n + 4) .inv-animate-fade-up,
+.inv-content.is-revealed > *:nth-child(n + 4).inv-animate-fade-up {
+  animation-delay: 0.28s;
+}
+
+.inv-gallery-placeholder {
+  width: 100%;
+  border-radius: 1rem;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inv-animate-fade-up,
+  .inv-animate-fade-in,
+  .inv-animate-scale-in,
+  .sakura-petal {
+    animation: none !important;
+  }
 }
 
 .inv-section {

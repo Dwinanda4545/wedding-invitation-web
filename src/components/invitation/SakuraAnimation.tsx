@@ -1,5 +1,6 @@
-const PETAL_COUNT = 18
+const PETAL_COUNT = 10
 
+/** Lightweight sakura petals — mount only after cover open (parent-gated). */
 export function SakuraAnimation() {
   return (
     <div className="sakura-container" aria-hidden="true">
@@ -9,10 +10,10 @@ export function SakuraAnimation() {
           className="sakura-petal"
           style={{
             left: `${(i * 37) % 100}%`,
-            animationDuration: `${8 + (i % 6)}s`,
-            animationDelay: `${(i * 0.7) % 5}s`,
-            width: `${8 + (i % 4) * 2}px`,
-            height: `${8 + (i % 4) * 2}px`,
+            animationDuration: `${9 + (i % 5)}s`,
+            animationDelay: `${(i * 0.85) % 6}s`,
+            width: `${8 + (i % 3) * 2}px`,
+            height: `${8 + (i % 3) * 2}px`,
           }}
         />
       ))}

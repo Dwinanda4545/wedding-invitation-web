@@ -492,9 +492,9 @@ html, body { height: 100%; }`,
       message: (document.getElementById('env-message') || {}).value || null,
       sender_email: null,
       sender_phone: null
-    }).then(function(res){
-      if (res && res.payment_url) window.top.location.href = res.payment_url;
-      else throw new Error('payment_url kosong');
+    }).then(function(){
+      // Host (CustomSectionFrame) navigates to payment_url; iframe cannot set top.location.
+      if (submitBtn) submitBtn.textContent = 'Mengalihkan…';
     }).catch(function(ex){
       if (err) { err.style.display = 'block'; err.textContent = String(ex && ex.message ? ex.message : ex); }
       if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Kirim Amplop'; }

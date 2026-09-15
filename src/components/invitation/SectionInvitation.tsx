@@ -56,7 +56,12 @@ export function SectionInvitation({
 }: Props) {
   const [coverOpen, setCoverOpen] = useState(previewMode || editDecor)
   const [wishes, setWishes] = useState(data.event.wishes ?? [])
+  const [contentMounted, setContentMounted] = useState(
+    previewMode || editDecor || data.event.invitation_settings?.cover_enabled === false,
+  )
+  const [sakuraReady, setSakuraReady] = useState(false)
   const musicRef = useRef<MusicPlayerHandle>(null)
+  const musicTimerRef = useRef<number | null>(null)
 
   const theme = useMemo(
     () =>
@@ -156,10 +161,41 @@ export function SectionInvitation({
 
   function handleOpenCover() {
     setCoverOpen(true)
-    musicRef.current?.play()
+    if (musicTimerRef.current) window.clearTimeout(musicTimerRef.current)
+    // Defer music so it does not compete with first content paint.
+    musicTimerRef.current = window.setTimeout(() => {
+      musicRef.current?.play()
+    }, 450)
   }
 
   const contentVisible = !settings.cover_enabled || coverOpen
+
+  useEffect(() => {
+    if (!contentVisible) {
+      setContentMounted(false)
+      setSakuraReady(false)
+      return
+    }
+    // Preview / no-cover: mount immediately. Live invite: short delay after open.
+    const delay = previewMode || editDecor || settings.cover_enabled === false ? 0 : 280
+    const t = window.setTimeout(() => setContentMounted(true), delay)
+    return () => window.clearTimeout(t)
+  }, [contentVisible, previewMode, editDecor, settings.cover_enabled])
+
+  useEffect(() => {
+    if (!contentVisible || !showSakura) {
+      setSakuraReady(false)
+      return
+    }
+    const t = window.setTimeout(() => setSakuraReady(true), 800)
+    return () => window.clearTimeout(t)
+  }, [contentVisible, showSakura])
+
+  useEffect(() => {
+    return () => {
+      if (musicTimerRef.current) window.clearTimeout(musicTimerRef.current)
+    }
+  }, [])
 
   const coverStyle = isMobileViewport
     ? {
@@ -280,6 +316,7 @@ export function SectionInvitation({
                 title={sectionTitle.text}
                 showTitle={sectionTitle.show}
                 sliderSettings={settings.gallery_slider}
+                enabled={contentMounted}
               />
             </div>
           </SectionBackgroundShell>
@@ -388,7 +425,7 @@ export function SectionInvitation({
           onAssetsChange={onDecorAssetsChange}
         />
 
-        {showSakura && contentVisible && <SakuraAnimation />}
+        {showSakura && sakuraReady && <SakuraAnimation />}
 
         {isSectionCustomMode(settings, 'cover') ? (
           settings.cover_enabled !== false ? (
@@ -408,12 +445,8 @@ export function SectionInvitation({
           />
         )}
 
-        <div
-          className={[
-            'inv-content',
-            contentVisible ? 'inv-animate-fade-in' : 'invisible h-0 overflow-hidden',
-          ].join(' ')}
-        >
+        {contentMounted ? (
+        <div className="inv-content inv-animate-fade-in is-revealed">
           {isSectionCustomMode(settings, 'hero') ? (
             <SectionBackgroundShell sectionKey="hero" settings={settings}>
               {renderCustomFrame('hero')}
@@ -453,6 +486,7 @@ export function SectionInvitation({
             Undangan Digital
           </footer>
         </div>
+        ) : null}
       </div>
       </div>
 

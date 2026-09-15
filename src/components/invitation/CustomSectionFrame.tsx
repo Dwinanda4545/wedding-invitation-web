@@ -146,7 +146,16 @@ export function CustomSectionFrame({
             message: body.message ?? null,
           },
         )
-        replyCreateEnvelope(msg.requestId, { ok: true, data: res.data })
+        const paymentUrl = res.data?.payment_url
+        // Sandboxed iframe cannot set top.location — navigate from the host.
+        if (typeof paymentUrl === 'string' && paymentUrl !== '') {
+          window.location.assign(paymentUrl)
+          return
+        }
+        replyCreateEnvelope(msg.requestId, {
+          ok: false,
+          message: 'payment_url kosong',
+        })
       } catch (err) {
         let message = 'Gagal memproses amplop digital.'
         if (axios.isAxiosError(err)) {
