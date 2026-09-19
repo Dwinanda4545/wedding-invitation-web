@@ -10,6 +10,7 @@ type GuestRow = {
   id: number
   name: string
   guest_type: string
+  relation?: { id: number; label: string } | null
   is_attended: boolean
   scanned_at: string | null
 }
@@ -93,6 +94,7 @@ export function GuestbookPage() {
           id: payload.guest_id,
           name: payload.name,
           guest_type: payload.guest_type,
+          relation: prev[idx]?.relation ?? null,
           is_attended: payload.is_attended,
           scanned_at: payload.scanned_at,
         }
@@ -234,6 +236,7 @@ export function GuestbookPage() {
               <tr>
                 <th className="px-4 py-3">Nama</th>
                 <th className="px-4 py-3">Tipe</th>
+                <th className="px-4 py-3">Relasi</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Waktu</th>
                 <th className="px-4 py-3" />
@@ -244,6 +247,9 @@ export function GuestbookPage() {
                 <tr key={g.id} className="border-b border-stone-100">
                   <td className="px-4 py-3 font-medium text-stone-900">{g.name}</td>
                   <td className="px-4 py-3 text-stone-600">{g.guest_type}</td>
+                  <td className="px-4 py-3 text-stone-600">
+                    {g.relation?.label ?? '—'}
+                  </td>
                   <td className="px-4 py-3">
                     {g.is_attended ? (
                       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">
