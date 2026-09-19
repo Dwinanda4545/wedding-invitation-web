@@ -29,11 +29,16 @@ import { HostsSection } from './HostsSection'
 import { QrSection } from './QrSection'
 import { CustomSection } from './CustomSection'
 import { SakuraAnimation } from './SakuraAnimation'
+import { FallingLeavesAnimation } from './FallingLeavesAnimation'
+import { FallingLeavesToggle } from './FallingLeavesToggle'
+import { SideCharacters } from './SideCharacters'
+import { SideCharactersToggle } from './SideCharactersToggle'
 import { MusicPlayer, type MusicPlayerHandle } from './MusicPlayer'
 import { DecorLayers } from './DecorLayers'
 import { SectionBackgroundShell } from './SectionBackgroundShell'
 import { MOBILE_VIEWPORT_WIDTH, mobileCanvasScale } from '../../lib/mobileViewport'
 import type { EnvelopePaymentResult } from '../../lib/envelopeTypes'
+import { useScrollReplayAnimations } from '../../hooks/useScrollReplayAnimations'
 import './invitation.css'
 
 type Props = {
@@ -60,8 +65,13 @@ export function SectionInvitation({
     previewMode || editDecor || data.event.invitation_settings?.cover_enabled === false,
   )
   const [sakuraReady, setSakuraReady] = useState(false)
+  const [leavesReady, setLeavesReady] = useState(false)
+  const [leavesOn, setLeavesOn] = useState(false)
+  const [charsReady, setCharsReady] = useState(false)
+  const [charsOn, setCharsOn] = useState(false)
   const musicRef = useRef<MusicPlayerHandle>(null)
   const musicTimerRef = useRef<number | null>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const theme = useMemo(
     () =>
@@ -76,6 +86,8 @@ export function SectionInvitation({
   const coupleInfo = mergeCoupleInfo(data.event.couple_info)
   const hosts = mergeHosts(data.event.hosts)
   const sections = settings.sections ?? {}
+  const leavesDefault = settings.falling_leaves_enabled !== false
+  const charsDefault = settings.side_characters_enabled === true
   const customById = useMemo(() => {
     const map = new Map(
       (settings.custom_sections ?? []).map((section) => [section.id, section]),
@@ -171,9 +183,19 @@ export function SectionInvitation({
   const contentVisible = !settings.cover_enabled || coverOpen
 
   useEffect(() => {
+    setLeavesOn(leavesDefault)
+  }, [leavesDefault])
+
+  useEffect(() => {
+    setCharsOn(charsDefault)
+  }, [charsDefault])
+
+  useEffect(() => {
     if (!contentVisible) {
       setContentMounted(false)
       setSakuraReady(false)
+      setLeavesReady(false)
+      setCharsReady(false)
       return
     }
     // Preview / no-cover: mount immediately. Live invite: short delay after open.
@@ -192,10 +214,40 @@ export function SectionInvitation({
   }, [contentVisible, showSakura])
 
   useEffect(() => {
+    if (!contentVisible || !leavesOn) {
+      setLeavesReady(false)
+      return
+    }
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduceMotion) {
+      setLeavesReady(false)
+      return
+    }
+    const t = window.setTimeout(() => setLeavesReady(true), 650)
+    return () => window.clearTimeout(t)
+  }, [contentVisible, leavesOn])
+
+  useEffect(() => {
+    if (!contentVisible || !charsOn) {
+      setCharsReady(false)
+      return
+    }
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduceMotion) {
+      setCharsReady(false)
+      return
+    }
+    const t = window.setTimeout(() => setCharsReady(true), 650)
+    return () => window.clearTimeout(t)
+  }, [contentVisible, charsOn])
+
+  useEffect(() => {
     return () => {
       if (musicTimerRef.current) window.clearTimeout(musicTimerRef.current)
     }
   }, [])
+
+  useScrollReplayAnimations(contentRef, contentMounted)
 
   const coverStyle = isMobileViewport
     ? {
@@ -248,13 +300,15 @@ export function SectionInvitation({
       | 'qr'
     const sectionTitle = getSectionTitle(settings, builtinKey)
 
-    if (
-      builtinKey !== 'qr' &&
-      isSectionCustomMode(settings, builtinKey)
-    ) {
+      if (builtinKey !== 'qr' && isSectionCustomMode(settings, builtinKey)) {
       if (sections[builtinKey] === false) return null
       return (
-        <SectionBackgroundShell key={key} sectionKey={builtinKey} settings={settings}>
+        <SectionBackgroundShell
+          key={key}
+          sectionKey={builtinKey}
+          settings={settings}
+          className="inv-reveal"
+        >
           {renderCustomFrame(builtinKey)}
         </SectionBackgroundShell>
       )
@@ -335,6 +389,7 @@ export function SectionInvitation({
                 tagColor={theme.style.tagColor}
                 title={sectionTitle.text}
                 showTitle={sectionTitle.show}
+                isUniversal={Boolean(data.is_universal)}
               />
             </div>
           </SectionBackgroundShell>
@@ -366,12 +421,13 @@ export function SectionInvitation({
                 tagColor={theme.style.tagColor}
                 title={sectionTitle.text}
                 showTitle={sectionTitle.show}
+                isUniversal={Boolean(data.is_universal)}
               />
             </div>
           </SectionBackgroundShell>
         )
       case 'qr':
-        if (sections.qr === false) return null
+        if (data.is_universal || sections.qr === false) return null
         return (
           <SectionBackgroundShell key={key} sectionKey="qr" settings={settings}>
             <div className="mx-auto max-w-lg">
@@ -425,8 +481,6 @@ export function SectionInvitation({
           onAssetsChange={onDecorAssetsChange}
         />
 
-        {showSakura && sakuraReady && <SakuraAnimation />}
-
         {isSectionCustomMode(settings, 'cover') ? (
           settings.cover_enabled !== false ? (
             renderCustomFrame('cover', 'cover')
@@ -446,9 +500,13 @@ export function SectionInvitation({
         )}
 
         {contentMounted ? (
-        <div className="inv-content inv-animate-fade-in is-revealed">
+        <div ref={contentRef} className="inv-content inv-animate-fade-in">
           {isSectionCustomMode(settings, 'hero') ? (
-            <SectionBackgroundShell sectionKey="hero" settings={settings}>
+            <SectionBackgroundShell
+              sectionKey="hero"
+              settings={settings}
+              className="inv-reveal"
+            >
               {renderCustomFrame('hero')}
             </SectionBackgroundShell>
           ) : (
@@ -471,7 +529,11 @@ export function SectionInvitation({
               const custom = customById.get(customId)
               if (!custom || custom.enabled === false) return null
               if (isSectionCustomMode(settings, key)) {
-                return renderCustomFrame(key)
+                return (
+                  <div key={key} className="inv-reveal">
+                    {renderCustomFrame(key)}
+                  </div>
+                )
               }
               return (
                 <div key={key} className="mx-auto max-w-lg">
@@ -489,6 +551,25 @@ export function SectionInvitation({
         ) : null}
       </div>
       </div>
+
+      {/* Outside scaled/overflow viewport so position:fixed is not clipped */}
+      {showSakura && sakuraReady && <SakuraAnimation />}
+      {charsReady && (
+        <SideCharacters previewEmbed={previewMode || editDecor} />
+      )}
+      {leavesReady && (
+        <FallingLeavesAnimation
+          tagColor={theme.style.tagColor}
+          previewEmbed={previewMode || editDecor}
+        />
+      )}
+
+      {contentVisible && !editDecor && (
+        <>
+          <SideCharactersToggle enabled={charsOn} onChange={setCharsOn} />
+          <FallingLeavesToggle enabled={leavesOn} onChange={setLeavesOn} />
+        </>
+      )}
 
       {!previewMode && !editDecor && (
         <MusicPlayer

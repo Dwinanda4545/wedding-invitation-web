@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import axios from 'axios'
 import type { InvitationWish } from '../../lib/invitationTypes'
+import { invitationApiBase } from '../../lib/invitationApi'
 import { api } from '../../lib/api'
 import { SectionTitle } from './SectionTitle'
 
@@ -15,6 +16,7 @@ type Props = {
   tagColor?: string
   title?: string
   showTitle?: boolean
+  isUniversal?: boolean
 }
 
 export function WishesSection({
@@ -26,6 +28,7 @@ export function WishesSection({
   tagColor,
   title = 'Doa & Ucapan',
   showTitle = true,
+  isUniversal = false,
 }: Props) {
   const [name, setName] = useState(myWish?.guest_name || guestName)
   const [message, setMessage] = useState(myWish?.message ?? '')
@@ -45,8 +48,9 @@ export function WishesSection({
     setNotice(null)
     try {
       if (alreadySent) {
+        if (isUniversal) return
         const { data } = await api.patch<{ data: InvitationWish }>(
-          `/api/invitation/${secretToken}/wishes`,
+          `${invitationApiBase(false, secretToken)}/wishes`,
           { rsvp_status: rsvp },
         )
         setSentWish(data.data)
@@ -55,7 +59,7 @@ export function WishesSection({
       } else {
         if (!message.trim()) return
         const { data } = await api.post<{ data: InvitationWish }>(
-          `/api/invitation/${secretToken}/wishes`,
+          `${invitationApiBase(isUniversal, secretToken)}/wishes`,
           {
             guest_name: name.trim() || guestName,
             message: message.trim(),
@@ -136,7 +140,7 @@ export function WishesSection({
         {notice && <p className="text-xs text-emerald-200">{notice}</p>}
         <button
           type="submit"
-          disabled={sending}
+          disabled={sending || (isUniversal && alreadySent)}
           className="w-full rounded-full py-2 text-sm font-semibold uppercase tracking-wider"
           style={{ background: 'rgba(255,255,255,0.3)' }}
         >

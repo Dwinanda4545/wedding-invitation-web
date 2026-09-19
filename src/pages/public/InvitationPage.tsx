@@ -5,6 +5,7 @@ import { useParams } from 'react-router-dom'
 import { QrSection } from '../../components/invitation/QrSection'
 import { SectionInvitation } from '../../components/invitation/SectionInvitation'
 import type { InvitationResponse } from '../../lib/invitationTypes'
+import { invitationApiBase } from '../../lib/invitationApi'
 import {
   parseEnvelopePaymentResult,
   type EnvelopePaymentResult,
@@ -16,8 +17,9 @@ import {
 } from '../../lib/invitationTemplates'
 import { api } from '../../lib/api'
 
-export function InvitationPage() {
-  const { secret_token } = useParams<{ secret_token: string }>()
+export function InvitationPage({ open = false }: { open?: boolean }) {
+  const params = useParams<{ secret_token?: string; token?: string }>()
+  const secret_token = open ? params.token : params.secret_token
   const [data, setData] = useState<InvitationResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [paymentResult, setPaymentResult] = useState<EnvelopePaymentResult>(null)
@@ -39,7 +41,7 @@ export function InvitationPage() {
     const load = async () => {
       try {
         const res = await api.get<InvitationResponse>(
-          `/api/invitation/${secret_token}`,
+          invitationApiBase(open, secret_token),
         )
         if (!cancelled) setData(res.data)
       } catch (e) {
@@ -54,11 +56,17 @@ export function InvitationPage() {
 
     void load()
 
+    if (open) {
+      return () => {
+        cancelled = true
+      }
+    }
+
     // Refresh while not checked-in so QR hides soon after scan.
     const interval = window.setInterval(() => {
       if (cancelled) return
       void api
-        .get<InvitationResponse>(`/api/invitation/${secret_token}`)
+        .get<InvitationResponse>(invitationApiBase(false, secret_token))
         .then((res) => {
           if (cancelled) return
           setData(res.data)
@@ -75,7 +83,7 @@ export function InvitationPage() {
       cancelled = true
       window.clearInterval(interval)
     }
-  }, [secret_token])
+  }, [secret_token, open])
 
   const theme = useMemo(
     () =>
@@ -94,7 +102,7 @@ export function InvitationPage() {
       raw,
       {
         guestName: data.guest.name,
-        guestType: data.guest.guest_type,
+        guestType: data.guest.guest_type ?? '',
         eventName: data.event.name,
         eventDate: data.event.event_date ?? null,
         eventLocation: data.event.location ?? null,
@@ -140,11 +148,13 @@ export function InvitationPage() {
           dangerouslySetInnerHTML={{ __html: bodyHtml }}
         />
         <div className="mt-10">
-          <QrSection
-            qrCodeUrl={data.guest.qr_code_url}
-            isAttended={Boolean(data.guest.is_attended)}
-            theme={theme}
-          />
+          {!open && !data.is_universal && (
+            <QrSection
+              qrCodeUrl={data.guest.qr_code_url}
+              isAttended={Boolean(data.guest.is_attended)}
+              theme={theme}
+            />
+          )}
         </div>
       </div>
     </div>
