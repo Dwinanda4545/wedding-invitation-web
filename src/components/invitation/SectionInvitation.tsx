@@ -491,7 +491,7 @@ export function SectionInvitation({
             eventName={data.event.name}
             eventDateLabel={formatEventDate(data.event.event_date)}
             guestName={data.guest.name}
-            guestType={data.guest.guest_type}
+            guestType={data.guest.guest_type ?? ''}
             onOpen={handleOpenCover}
             style={coverStyle}
             isOpen={coverOpen}

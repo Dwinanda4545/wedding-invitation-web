@@ -197,7 +197,7 @@ export function buildSectionCustomPayload(
   return {
     guest: {
       name: data.guest.name,
-      guest_type: data.guest.guest_type,
+      guest_type: data.guest.guest_type ?? '',
     },
     event: {
       name: data.event.name,
