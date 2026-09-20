@@ -28,20 +28,6 @@ type Props = {
 
 type SplideComponent = InstanceType<typeof Splide>
 
-function snapToNearestSlide(splide: SplideCore) {
-  const idx = splide.index
-  if (!Number.isFinite(idx)) return
-  const nearest = Math.round(idx)
-  if (nearest !== idx) {
-    splide.go(nearest)
-  }
-}
-
-function refreshAndSnap(splide: SplideCore) {
-  splide.refresh()
-  snapToNearestSlide(splide)
-}
-
 export function GallerySection({
   images,
   tagColor,
@@ -57,6 +43,8 @@ export function GallerySection({
   const [inView, setInView] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const [readyIds, setReadyIds] = useState<Set<number>>(() => new Set())
+
+  const mobileHeightPx = Math.max(200, Math.round(slider.height_px * 0.72))
 
   useEffect(() => {
     setReadyIds(new Set())
@@ -88,6 +76,7 @@ export function GallerySection({
     return () => io.disconnect()
   }, [enabled])
 
+  // Stable options — no inView (avoids remount). No focus:'center' (breaks loop + perPage 1).
   const options = useMemo<Options>(
     () => ({
       type: slider.type,
@@ -101,24 +90,17 @@ export function GallerySection({
       gap: `${slider.gap_px}px`,
       height: `${slider.height_px}px`,
       cover: true,
-      focus: 'center',
-      trimSpace: 'move',
-      updateOnMove: true,
       speed: 500,
       easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
       breakpoints: {
         640: {
           perPage: 1,
           gap: `${Math.min(slider.gap_px, 8)}px`,
-          height: undefined,
-          heightRatio: 1.25,
-          focus: 'center',
-          trimSpace: 'move',
-          arrows: slider.arrows,
+          height: `${mobileHeightPx}px`,
         },
       },
     }),
-    [slider],
+    [slider, mobileHeightPx],
   )
 
   const syncAutoplay = useCallback(() => {
@@ -137,40 +119,34 @@ export function GallerySection({
     syncAutoplay()
   }, [syncAutoplay])
 
+  const settleLayout = useCallback(() => {
+    const splide = splideRef.current?.splide
+    if (!splide) return
+    splide.refresh()
+    // Re-apply integer index without fighting mid-drag transforms.
+    const idx = Math.round(splide.index)
+    if (Number.isFinite(idx)) {
+      splide.go(idx)
+    }
+  }, [])
+
   useEffect(() => {
     if (!nearViewport || !enabled) return
 
+    let timer: number | null = null
     const onResize = () => {
-      const splide = splideRef.current?.splide
-      if (!splide) return
-      refreshAndSnap(splide)
-    }
-
-    const onVisibility = () => {
-      if (document.visibilityState !== 'visible') return
-      onResize()
-      syncAutoplay()
+      if (timer != null) window.clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        settleLayout()
+      }, 150)
     }
 
     window.addEventListener('resize', onResize)
-    document.addEventListener('visibilitychange', onVisibility)
     return () => {
+      if (timer != null) window.clearTimeout(timer)
       window.removeEventListener('resize', onResize)
-      document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [nearViewport, enabled, syncAutoplay])
-
-  useEffect(() => {
-    if (!inView) return
-    const splide = splideRef.current?.splide
-    if (!splide) return
-    // Recalculate after becoming visible (cover open / scroll into view).
-    const id = window.requestAnimationFrame(() => {
-      refreshAndSnap(splide)
-      syncAutoplay()
-    })
-    return () => window.cancelAnimationFrame(id)
-  }, [inView, syncAutoplay])
+  }, [nearViewport, enabled, settleLayout])
 
   const markReady = useCallback((id: number) => {
     setReadyIds((prev) => {
@@ -186,26 +162,32 @@ export function GallerySection({
     const indices = [activeIndex - 1, activeIndex, activeIndex + 1].filter(
       (i) => i >= 0 && i < images.length,
     )
+    // Always require the active slide; neighbors optional if missing.
     return indices.every((i) => readyIds.has(images[i]!.id))
   }, [images, activeIndex, readyIds])
 
+  // After images paint, refresh once so track width/position is correct on mobile.
+  useEffect(() => {
+    if (!imagesReady || !nearViewport) return
+    const id = window.setTimeout(() => {
+      settleLayout()
+      syncAutoplay()
+    }, 50)
+    return () => window.clearTimeout(id)
+  }, [imagesReady, nearViewport, settleLayout, syncAutoplay])
+
   const onMounted = useCallback(
     (splide: SplideCore) => {
-      window.requestAnimationFrame(() => {
-        refreshAndSnap(splide)
+      window.setTimeout(() => {
+        splide.refresh()
         syncAutoplay()
-      })
+      }, 0)
     },
     [syncAutoplay],
   )
 
   const onMoved = useCallback((splide: SplideCore) => {
-    setActiveIndex(splide.index)
-    snapToNearestSlide(splide)
-  }, [])
-
-  const onResized = useCallback((splide: SplideCore) => {
-    snapToNearestSlide(splide)
+    setActiveIndex(Math.round(splide.index))
   }, [])
 
   if (images.length === 0) return null
@@ -214,13 +196,14 @@ export function GallerySection({
     <section ref={rootRef} className="inv-section inv-animate-fade-up">
       <SectionTitle title={title} show={showTitle} tagColor={tagColor} />
       <div
-        className="inv-gallery-splide mx-auto max-w-lg px-2"
+        className="inv-gallery-splide mx-auto w-full max-w-lg px-2"
         data-theme={slider.theme}
         data-ready={imagesReady ? 'true' : 'false'}
         style={
           {
             '--inv-gallery-accent': tagColor ?? '#be185d',
             '--inv-gallery-h': `${slider.height_px}px`,
+            '--inv-gallery-h-mobile': `${mobileHeightPx}px`,
           } as CSSProperties
         }
       >
@@ -241,7 +224,6 @@ export function GallerySection({
               aria-label={title}
               onMounted={onMounted}
               onMoved={onMoved}
-              onResized={onResized}
             >
               {images.map((img, index) => (
                 <SplideSlide key={img.id}>
@@ -267,11 +249,7 @@ export function GallerySection({
             </Splide>
           </>
         ) : (
-          <div
-            className="inv-gallery-placeholder"
-            style={{ height: `${slider.height_px}px` }}
-            aria-hidden
-          >
+          <div className="inv-gallery-placeholder" aria-hidden>
             <span className="inv-gallery-spinner" />
           </div>
         )}
