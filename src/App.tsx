@@ -12,6 +12,7 @@ import { InvitationContentPage } from './pages/admin/InvitationContentPage'
 import { EnvelopeTransactionsPage } from './pages/admin/EnvelopeTransactionsPage'
 import { ScannerPage } from './pages/admin/ScannerPage'
 import { UsersPage } from './pages/admin/UsersPage'
+import { WhatsappDevicesPage } from './pages/admin/WhatsappDevicesPage'
 import { InvitationPage } from './pages/public/InvitationPage'
 
 function HomeRedirect() {
@@ -34,6 +35,10 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
+            path="/invitation/open/:token"
+            element={<InvitationPage open />}
+          />
+          <Route
             path="/invitation/:secret_token"
             element={<InvitationPage />}
           />
@@ -47,6 +52,7 @@ export default function App() {
                 <Route path="/admin/events/:id/guests" element={<GuestsPage />} />
                 <Route path="/admin/events/:id/panitia" element={<EventPanitiaPage />} />
                 <Route path="/admin/users" element={<UsersPage />} />
+                <Route path="/admin/whatsapp-devices" element={<WhatsappDevicesPage />} />
               </Route>
               <Route path="/admin/scanner" element={<ScannerPage />} />
               <Route path="/admin/guestbook" element={<GuestbookPage />} />

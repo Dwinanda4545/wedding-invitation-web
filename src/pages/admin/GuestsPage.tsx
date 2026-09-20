@@ -1,7 +1,13 @@
 import axios from 'axios'
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, ensureCsrfCookie } from '../../lib/api'
+import { api, ensureCsrfCookie, uploadForm } from '../../lib/api'
+import {
+  DataTableFooter,
+  DataTableToolbar,
+  SortableTh,
+  useAdminDataTable,
+} from '../../components/AdminDataTable'
 
 type GuestRelationOption = {
   id: number
@@ -36,8 +42,33 @@ type EventDetail = {
   whatsapp_device_id?: number | null
 }
 
+type WaSendSummary = {
+  guests_total: number
+  never_sent: number
+  latest_sent: number
+  latest_failed: number
+  latest_pending: number
+  attempts_sent: number
+  attempts_failed: number
+  attempts_pending: number
+}
+
+type WaSendRow = {
+  id: number
+  guest_id: number
+  phone_number: string | null
+  status: 'pending' | 'sent' | 'failed'
+  error_message: string | null
+  sent_at: string | null
+  created_at: string
+  guest: { id: number; name: string; phone_number: string | null } | null
+  device: { id: number; name: string; phone_label: string | null } | null
+}
+
 const DEFAULT_MESSAGE =
   'Halo {nama},\n\nAnda diundang. Silakan buka undangan melalui tautan berikut:\n\n{link}'
+
+type PageTab = 'guests' | 'wa-history'
 
 export function GuestsPage() {
   const { id } = useParams<{ id: string }>()
@@ -67,6 +98,18 @@ export function GuestsPage() {
   const [sendMessage, setSendMessage] = useState(DEFAULT_MESSAGE)
   const [sendDeviceId, setSendDeviceId] = useState('')
   const [sending, setSending] = useState(false)
+
+  const [activeTab, setActiveTab] = useState<PageTab>('guests')
+  const [waSummary, setWaSummary] = useState<WaSendSummary | null>(null)
+  const [waSends, setWaSends] = useState<WaSendRow[]>([])
+  const [waStatusFilter, setWaStatusFilter] = useState<string>('')
+  const [waLoading, setWaLoading] = useState(false)
+  const [waPage, setWaPage] = useState(1)
+  const [waMeta, setWaMeta] = useState({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+  })
 
   const invitationBase = useMemo(
     () => `${window.location.origin}/invitation`,
@@ -107,6 +150,43 @@ export function GuestsPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const loadWaHistory = useCallback(async () => {
+    if (!Number.isFinite(eventId)) return
+    setWaLoading(true)
+    setError(null)
+    try {
+      const params = new URLSearchParams({
+        per_page: '25',
+        page: String(waPage),
+      })
+      if (waStatusFilter) {
+        params.set('status', waStatusFilter)
+      }
+      const [sumRes, listRes] = await Promise.all([
+        api.get<{ data: WaSendSummary }>(
+          `/api/events/${eventId}/invitation-sends/summary`,
+        ),
+        api.get<{
+          data: WaSendRow[]
+          meta: { current_page: number; last_page: number; total: number }
+        }>(`/api/events/${eventId}/invitation-sends?${params.toString()}`),
+      ])
+      setWaSummary(sumRes.data.data)
+      setWaSends(listRes.data.data)
+      setWaMeta(listRes.data.meta)
+    } catch {
+      setError('Gagal memuat riwayat WhatsApp.')
+    } finally {
+      setWaLoading(false)
+    }
+  }, [eventId, waPage, waStatusFilter])
+
+  useEffect(() => {
+    if (activeTab === 'wa-history') {
+      void loadWaHistory()
+    }
+  }, [activeTab, loadWaHistory])
 
   function resetGuestForm() {
     setEditing(null)
@@ -155,8 +235,31 @@ export function GuestsPage() {
     }
   }
 
+  async function removeSelected() {
+    if (selectedIds.length === 0 || !Number.isFinite(eventId)) return
+    if (!window.confirm(`Hapus ${selectedIds.length} tamu terpilih? Data disembunyikan (soft delete), bukan dihapus permanen.`)) {
+      return
+    }
+    const ids = selectedIds
+    setError(null)
+    try {
+      await ensureCsrfCookie()
+      const { data } = await api.post<{ deleted: number }>(
+        `/api/events/${eventId}/guests/bulk-delete`,
+        { ids },
+      )
+      setSelectedIds([])
+      if (editing && ids.includes(editing.id)) resetGuestForm()
+      await load()
+      setToast(`${data.deleted} tamu dihapus.`)
+      window.setTimeout(() => setToast(null), 2500)
+    } catch {
+      setError('Gagal menghapus tamu terpilih.')
+    }
+  }
+
   async function removeGuest(g: GuestRow) {
-    if (!window.confirm(`Hapus tamu "${g.name}"?`)) return
+    if (!window.confirm(`Hapus tamu "${g.name}"? Data disembunyikan (soft delete), bukan dihapus permanen.`)) return
     setError(null)
     try {
       await api.delete(`/api/events/${eventId}/guests/${g.id}`)
@@ -172,14 +275,34 @@ export function GuestsPage() {
     if (!file || !Number.isFinite(eventId)) return
     setError(null)
     const fd = new FormData()
-    fd.append('file', file)
+    fd.append('file', file, file.name)
     try {
-      await api.post(`/api/events/${eventId}/guests/import`, fd)
+      // fetch() sets multipart boundary. Axios JSON/base64 hits old API as "file required".
+      const data = await uploadForm<{
+        message: string
+        created: number
+        skipped_empty_rows: number
+        warnings?: string[]
+      }>(`/api/events/${eventId}/guests/import`, fd)
       await load()
-      setToast('Import selesai.')
-      window.setTimeout(() => setToast(null), 2500)
-    } catch {
-      setError('Import gagal. Pastikan kolom: name, phone_number, guest_type, relation.')
+      const warnings = data.warnings ?? []
+      if (warnings.length > 0) {
+        setToast(
+          `Import ${data.created} tamu. ${warnings.length} peringatan (relasi tidak cocok dikosongkan).`,
+        )
+        setError(warnings.slice(0, 5).join(' '))
+      } else {
+        setToast(`Import selesai: ${data.created} tamu.`)
+      }
+      window.setTimeout(() => setToast(null), 3500)
+    } catch (e) {
+      const err = e as Error & {
+        response?: { data?: { message?: string; errors?: Record<string, string[]> } }
+      }
+      const fieldError = err.response?.data?.errors?.file?.[0]
+      setError(
+        `Import gagal: ${fieldError ?? err.response?.data?.message ?? err.message ?? 'unknown'}`,
+      )
     }
   }
 
@@ -264,6 +387,11 @@ export function GuestsPage() {
           headers: { Accept: '*/*' },
         },
       )
+      if (data.type?.includes('application/json')) {
+        const text = await data.text()
+        const parsed = JSON.parse(text) as { message?: string }
+        throw new Error(parsed.message || 'Gagal mengunduh template')
+      }
       const url = URL.createObjectURL(data)
       const a = document.createElement('a')
       a.href = url
@@ -272,8 +400,47 @@ export function GuestsPage() {
       URL.revokeObjectURL(url)
       setToast('Template XLSX diunduh.')
       window.setTimeout(() => setToast(null), 2500)
-    } catch {
-      setError('Gagal mengunduh template import.')
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : 'Gagal mengunduh template import.',
+      )
+    }
+  }
+
+  async function downloadExport() {
+    if (!Number.isFinite(eventId)) return
+    setError(null)
+    try {
+      const res = await api.get<Blob>(
+        `/api/events/${eventId}/guests/export`,
+        {
+          responseType: 'blob',
+          headers: { Accept: '*/*' },
+        },
+      )
+      const data = res.data
+      if (data.type?.includes('application/json')) {
+        const text = await data.text()
+        const parsed = JSON.parse(text) as { message?: string }
+        throw new Error(parsed.message || 'Gagal mengekspor tamu')
+      }
+      const disposition = String(res.headers['content-disposition'] ?? '')
+      const match = /filename="?([^";]+)"?/i.exec(disposition)
+      const filename = match?.[1] ?? 'guests-export.xlsx'
+      const url = URL.createObjectURL(data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      setToast('Export XLSX diunduh.')
+      window.setTimeout(() => setToast(null), 2500)
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : 'Gagal mengekspor data tamu.',
+      )
     }
   }
 
@@ -345,6 +512,7 @@ export function GuestsPage() {
         } else {
           setError(res.data.data.error_message ?? 'Pengiriman gagal.')
           setSending(false)
+          void loadWaHistory()
           return
         }
       } else {
@@ -359,6 +527,7 @@ export function GuestsPage() {
 
       setSendOpen(false)
       setSelectedIds([])
+      void loadWaHistory()
       window.setTimeout(() => setToast(null), 3500)
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -381,13 +550,36 @@ export function GuestsPage() {
     )
   }
 
-  function toggleSelectAll() {
-    if (selectedIds.length === guests.length) {
-      setSelectedIds([])
-    } else {
-      setSelectedIds(guests.map((g) => g.id))
-    }
+  function checkAll() {
+    setSelectedIds(table.filtered.map((g) => g.id))
   }
+
+  function toggleSelectAll() {
+    const visibleIds = table.filtered.map((g) => g.id)
+    const allSelected =
+      visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id))
+    setSelectedIds(allSelected ? [] : visibleIds)
+  }
+
+  const table = useAdminDataTable(guests, {
+    initialSortKey: 'name',
+    searchText: (g) =>
+      [
+        g.name,
+        g.phone_number ?? '',
+        g.guest_type,
+        g.relation?.label ?? '',
+        g.is_attended ? 'hadir' : 'belum',
+      ].join(' '),
+    sortValue: (g, key) => {
+      if (key === 'name') return g.name
+      if (key === 'phone') return g.phone_number ?? ''
+      if (key === 'type') return g.guest_type
+      if (key === 'relation') return g.relation?.label ?? ''
+      if (key === 'attended') return g.is_attended ? 1 : 0
+      return ''
+    },
+  })
 
   const activeDevices = devices.filter(
     (d) =>
@@ -420,8 +612,35 @@ export function GuestsPage() {
             Tambah tamu, import dari template Excel, salin link, atau kirim via
             WhatsApp.
           </p>
+          <p className="mt-1 text-xs text-stone-500">
+            Template import: <code className="text-stone-700">name</code>,{' '}
+            <code className="text-stone-700">phone_number</code>,{' '}
+            <code className="text-stone-700">guest_type</code>,{' '}
+            <code className="text-stone-700">relation</code>. Nilai{' '}
+            <code className="text-stone-700">relation</code> harus sama persis
+            dengan label di master Relasi di bawah.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-800 shadow-sm hover:bg-stone-50 disabled:opacity-50"
+            disabled={table.filtered.length === 0}
+            onClick={checkAll}
+          >
+            Check all ({table.filtered.length})
+          </button>
+          <button
+            type="button"
+            className="rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-800 shadow-sm hover:bg-stone-50 disabled:opacity-50"
+            disabled={table.filtered.length === 0}
+            onClick={toggleSelectAll}
+          >
+            {table.filtered.length > 0 &&
+            table.filtered.every((g) => selectedIds.includes(g.id))
+              ? 'Uncheck all'
+              : 'Check all'}
+          </button>
           <button
             type="button"
             className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
@@ -431,6 +650,14 @@ export function GuestsPage() {
             }
           >
             Kirim WA terpilih ({selectedIds.length})
+          </button>
+          <button
+            type="button"
+            className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-100 disabled:opacity-50"
+            disabled={selectedIds.length === 0}
+            onClick={() => void removeSelected()}
+          >
+            Hapus terpilih ({selectedIds.length})
           </button>
           <Link
             to={`/admin/events/${eventId}/invitation`}
@@ -445,6 +672,13 @@ export function GuestsPage() {
           >
             Download template
           </button>
+          <button
+            type="button"
+            className="rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-800 shadow-sm hover:bg-stone-50"
+            onClick={() => void downloadExport()}
+          >
+            Export XLSX
+          </button>
           <label className="cursor-pointer rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-800 shadow-sm hover:bg-stone-50">
             Import CSV/XLSX
             <input
@@ -457,12 +691,223 @@ export function GuestsPage() {
         </div>
       </div>
 
+      <div className="flex gap-1 rounded-xl border border-stone-200 bg-white p-1 shadow-sm w-fit">
+        <button
+          type="button"
+          className={[
+            'rounded-lg px-4 py-2 text-sm font-medium transition',
+            activeTab === 'guests'
+              ? 'bg-rose-100 text-rose-900'
+              : 'text-stone-600 hover:bg-stone-50',
+          ].join(' ')}
+          onClick={() => setActiveTab('guests')}
+        >
+          Tamu
+        </button>
+        <button
+          type="button"
+          className={[
+            'rounded-lg px-4 py-2 text-sm font-medium transition',
+            activeTab === 'wa-history'
+              ? 'bg-emerald-100 text-emerald-900'
+              : 'text-stone-600 hover:bg-stone-50',
+          ].join(' ')}
+          onClick={() => setActiveTab('wa-history')}
+        >
+          Riwayat WA
+        </button>
+      </div>
+
       {toast && (
         <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full bg-stone-900 px-5 py-2 text-sm text-white shadow-lg">
           {toast}
         </div>
       )}
 
+      {error && (
+        <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {activeTab === 'wa-history' ? (
+        <div className="space-y-6">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+              <div className="text-xs font-medium uppercase tracking-wide text-stone-500">
+                Belum dikirim
+              </div>
+              <div className="mt-1 text-2xl font-semibold text-stone-900">
+                {waSummary?.never_sent ?? '—'}
+              </div>
+              <p className="mt-1 text-xs text-stone-500">
+                dari {waSummary?.guests_total ?? '—'} tamu
+              </p>
+            </div>
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-sm">
+              <div className="text-xs font-medium uppercase tracking-wide text-emerald-800">
+                Terkirim
+              </div>
+              <div className="mt-1 text-2xl font-semibold text-emerald-900">
+                {waSummary?.latest_sent ?? '—'}
+              </div>
+              <p className="mt-1 text-xs text-emerald-800/70">
+                status terakhir sukses
+              </p>
+            </div>
+            <div className="rounded-2xl border border-red-200 bg-red-50/50 p-4 shadow-sm">
+              <div className="text-xs font-medium uppercase tracking-wide text-red-800">
+                Gagal
+              </div>
+              <div className="mt-1 text-2xl font-semibold text-red-900">
+                {waSummary?.latest_failed ?? '—'}
+              </div>
+              <p className="mt-1 text-xs text-red-800/70">
+                status terakhir gagal
+              </p>
+            </div>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4 shadow-sm">
+              <div className="text-xs font-medium uppercase tracking-wide text-amber-900">
+                Total percobaan
+              </div>
+              <div className="mt-1 text-2xl font-semibold text-amber-950">
+                {(waSummary?.attempts_sent ?? 0) +
+                  (waSummary?.attempts_failed ?? 0) +
+                  (waSummary?.attempts_pending ?? 0)}
+              </div>
+              <p className="mt-1 text-xs text-amber-900/70">
+                {waSummary?.attempts_sent ?? 0} sukses ·{' '}
+                {waSummary?.attempts_failed ?? 0} gagal
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="text-sm text-stone-600">
+              Filter status{' '}
+              <select
+                className="ml-2 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-900"
+                value={waStatusFilter}
+                onChange={(e) => {
+                  setWaPage(1)
+                  setWaStatusFilter(e.target.value)
+                }}
+              >
+                <option value="">Semua</option>
+                <option value="sent">Terkirim</option>
+                <option value="failed">Gagal</option>
+                <option value="pending">Pending</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-50"
+              onClick={() => void loadWaHistory()}
+              disabled={waLoading}
+            >
+              {waLoading ? 'Memuat…' : 'Muat ulang'}
+            </button>
+          </div>
+
+          <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white shadow-sm">
+            <table className="w-full min-w-[800px] text-left text-sm">
+              <thead className="border-b border-stone-200 bg-stone-50 text-xs uppercase tracking-wide text-stone-500">
+                <tr>
+                  <th className="px-4 py-3">Waktu</th>
+                  <th className="px-4 py-3">Tamu</th>
+                  <th className="px-4 py-3">Nomor</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Device</th>
+                  <th className="px-4 py-3">Keterangan</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {waLoading && waSends.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-4 py-8 text-center text-stone-500"
+                    >
+                      Memuat riwayat…
+                    </td>
+                  </tr>
+                ) : null}
+                {!waLoading && waSends.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-4 py-8 text-center text-stone-500"
+                    >
+                      Belum ada percobaan pengiriman WhatsApp.
+                    </td>
+                  </tr>
+                ) : null}
+                {waSends.map((row) => (
+                  <tr key={row.id} className="hover:bg-stone-50/80">
+                    <td className="px-4 py-3 whitespace-nowrap text-stone-600">
+                      {new Date(row.sent_at ?? row.created_at).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 font-medium text-stone-900">
+                      {row.guest?.name ?? `#${row.guest_id}`}
+                    </td>
+                    <td className="px-4 py-3 text-stone-600">
+                      {row.phone_number ?? row.guest?.phone_number ?? '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {row.status === 'sent' ? (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-900">
+                          Terkirim
+                        </span>
+                      ) : row.status === 'failed' ? (
+                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-900">
+                          Gagal
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">
+                          Pending
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-stone-600">
+                      {row.device?.name ?? '—'}
+                    </td>
+                    <td className="max-w-xs truncate px-4 py-3 text-xs text-stone-500">
+                      {row.error_message ?? '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {waMeta.last_page > 1 ? (
+              <div className="flex items-center justify-between border-t border-stone-100 px-4 py-3 text-sm text-stone-600">
+                <span>
+                  Halaman {waMeta.current_page} / {waMeta.last_page} ·{' '}
+                  {waMeta.total} data
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-stone-200 px-3 py-1 disabled:opacity-40"
+                    disabled={waPage <= 1}
+                    onClick={() => setWaPage((p) => Math.max(1, p - 1))}
+                  >
+                    Prev
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-stone-200 px-3 py-1 disabled:opacity-40"
+                    disabled={waPage >= waMeta.last_page}
+                    onClick={() => setWaPage((p) => p + 1)}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <>
       {sendOpen ? (
         <form
           onSubmit={submitSend}
@@ -694,13 +1139,14 @@ export function GuestsPage() {
         </div>
       </form>
 
-      {error && (
-        <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
       <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white shadow-sm">
+        <DataTableToolbar
+          query={table.query}
+          onQueryChange={table.setQuery}
+          pageSize={table.pageSize}
+          onPageSizeChange={table.setPageSize}
+          placeholder="Nama, telepon, tipe, relasi"
+        />
         <table className="w-full min-w-[1000px] text-left text-sm">
           <thead className="border-b border-stone-200 bg-stone-50 text-xs uppercase tracking-wide text-stone-500">
             <tr>
@@ -708,29 +1154,55 @@ export function GuestsPage() {
                 <input
                   type="checkbox"
                   checked={
-                    guests.length > 0 && selectedIds.length === guests.length
+                    table.filtered.length > 0 &&
+                    table.filtered.every((g) => selectedIds.includes(g.id))
                   }
                   onChange={toggleSelectAll}
-                  aria-label="Pilih semua"
+                  aria-label="Pilih semua hasil"
                 />
               </th>
-              <th className="px-4 py-3">Nama</th>
-              <th className="px-4 py-3">Telepon</th>
-              <th className="px-4 py-3">Tipe</th>
-              <th className="px-4 py-3">Relasi</th>
-              <th className="px-4 py-3">Kehadiran</th>
+              <SortableTh
+                label="Nama"
+                active={table.sortKey === 'name'}
+                dir={table.sortDir}
+                onClick={() => table.toggleSort('name')}
+              />
+              <SortableTh
+                label="Telepon"
+                active={table.sortKey === 'phone'}
+                dir={table.sortDir}
+                onClick={() => table.toggleSort('phone')}
+              />
+              <SortableTh
+                label="Tipe"
+                active={table.sortKey === 'type'}
+                dir={table.sortDir}
+                onClick={() => table.toggleSort('type')}
+              />
+              <SortableTh
+                label="Relasi"
+                active={table.sortKey === 'relation'}
+                dir={table.sortDir}
+                onClick={() => table.toggleSort('relation')}
+              />
+              <SortableTh
+                label="Kehadiran"
+                active={table.sortKey === 'attended'}
+                dir={table.sortDir}
+                onClick={() => table.toggleSort('attended')}
+              />
               <th className="px-4 py-3 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-stone-100">
-            {guests.length === 0 && (
+            {table.pageRows.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-stone-500">
-                  Belum ada tamu.
+                  {guests.length === 0 ? 'Belum ada tamu.' : 'Tidak ada tamu yang cocok.'}
                 </td>
               </tr>
             )}
-            {guests.map((g) => (
+            {table.pageRows.map((g) => (
               <tr key={g.id} className="hover:bg-stone-50/80">
                 <td className="px-4 py-3">
                   <input
@@ -822,7 +1294,18 @@ export function GuestsPage() {
             ))}
           </tbody>
         </table>
+        <DataTableFooter
+          from={table.from}
+          to={table.to}
+          filteredCount={table.filteredCount}
+          totalCount={table.totalCount}
+          page={table.page}
+          pageCount={table.pageCount}
+          onPageChange={table.setPage}
+        />
       </div>
+        </>
+      )}
     </div>
   )
 }

@@ -31,6 +31,9 @@ export function AdminLayout() {
               <NavLink to="/admin/users" className={linkClass}>
                 Users
               </NavLink>
+              <NavLink to="/admin/whatsapp-devices" className={linkClass}>
+                WA Devices
+              </NavLink>
             </>
           ) : null}
           <NavLink to="/admin/scanner" className={linkClass}>
@@ -42,9 +45,9 @@ export function AdminLayout() {
         </nav>
         {isAdmin ? (
           <p className="mt-6 px-2 text-xs leading-relaxed text-stone-400">
-            Kelola tema, HTML, dan section undangan lewat tombol{' '}
-            <span className="font-medium text-stone-500">Undangan</span> pada
-            setiap acara.
+            Set panitia lewat tombol <span className="font-medium text-stone-500">Panitia</span> pada
+            setiap acara. Kelola undangan lewat tombol{' '}
+            <span className="font-medium text-stone-500">Undangan</span>.
           </p>
         ) : null}
       </aside>
@@ -103,6 +106,17 @@ export function AdminLayout() {
                 }
               >
                 Users
+              </NavLink>
+              <NavLink
+                to="/admin/whatsapp-devices"
+                className={({ isActive }) =>
+                  [
+                    'flex-1 rounded-lg py-2 text-center text-xs font-medium',
+                    isActive ? 'bg-rose-50 text-rose-900' : 'text-stone-600',
+                  ].join(' ')
+                }
+              >
+                WA
               </NavLink>
             </>
           ) : null}
