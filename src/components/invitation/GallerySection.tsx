@@ -74,8 +74,7 @@ export function GallerySection({
     return () => io.disconnect()
   }, [enabled])
 
-  // Same layout options on every viewport (match desktop).
-  // Mobile: explicit drag tuning — page scroll often steals horizontal swipes.
+  // Desktop: swipe/drag. Mobile (≤768px): no swipe — arrows + pagination buttons.
   const options = useMemo<Options>(
     () => ({
       type: slider.type,
@@ -91,11 +90,16 @@ export function GallerySection({
       cover: true,
       drag: true,
       waitForTransition: false,
-      dragMinThreshold: { mouse: 0, touch: 4 },
-      flickPower: 650,
-      flickMaxPages: 1,
       speed: 450,
       easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
+      breakpoints: {
+        768: {
+          drag: false,
+          pagination: true,
+          arrows: true,
+          perPage: 1,
+        },
+      },
     }),
     [slider],
   )

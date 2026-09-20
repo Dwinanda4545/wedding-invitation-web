@@ -924,8 +924,6 @@
 }
 
 .inv-gallery-splide .splide__track {
-  /* Prefer horizontal swipe over page scroll while finger is on the gallery. */
-  touch-action: pan-x;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -933,6 +931,53 @@
 .inv-gallery-splide .splide__track,
 .inv-gallery-splide .splide__list {
   height: 100%;
+}
+
+@media (max-width: 768px) {
+  .inv-gallery-splide .splide__track {
+    /* Swipe disabled — keep vertical page scroll comfortable. */
+    touch-action: pan-y;
+  }
+
+  .inv-gallery-splide .splide__arrow {
+    width: 2.75rem;
+    height: 2.75rem;
+    opacity: 1;
+    z-index: 4;
+  }
+
+  .inv-gallery-splide .splide__arrow svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .inv-gallery-splide .splide__pagination {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.75rem;
+    padding: 0;
+    bottom: auto;
+    left: auto;
+    transform: none;
+    z-index: 4;
+  }
+
+  .inv-gallery-splide .splide__pagination__page {
+    width: 0.6rem;
+    height: 0.6rem;
+    margin: 0;
+    border: 0;
+    padding: 0;
+    opacity: 1;
+  }
+
+  .inv-gallery-splide .splide__pagination__page.is-active {
+    transform: scale(1.2);
+  }
 }
 
 .inv-gallery-splide[data-theme='default'] {
