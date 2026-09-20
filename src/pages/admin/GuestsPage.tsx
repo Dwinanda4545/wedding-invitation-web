@@ -2,6 +2,7 @@ import axios from 'axios'
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, ensureCsrfCookie, uploadForm } from '../../lib/api'
+import { getEcho } from '../../lib/echo'
 import {
   DataTableFooter,
   DataTableToolbar,
@@ -151,10 +152,13 @@ export function GuestsPage() {
     void load()
   }, [load])
 
-  const loadWaHistory = useCallback(async () => {
+  const loadWaHistory = useCallback(async (opts?: { silent?: boolean }) => {
     if (!Number.isFinite(eventId)) return
-    setWaLoading(true)
-    setError(null)
+    const silent = opts?.silent === true
+    if (!silent) {
+      setWaLoading(true)
+      setError(null)
+    }
     try {
       const params = new URLSearchParams({
         per_page: '25',
@@ -176,9 +180,9 @@ export function GuestsPage() {
       setWaSends(listRes.data.data)
       setWaMeta(listRes.data.meta)
     } catch {
-      setError('Gagal memuat riwayat WhatsApp.')
+      if (!silent) setError('Gagal memuat riwayat WhatsApp.')
     } finally {
-      setWaLoading(false)
+      if (!silent) setWaLoading(false)
     }
   }, [eventId, waPage, waStatusFilter])
 
@@ -187,6 +191,60 @@ export function GuestsPage() {
       void loadWaHistory()
     }
   }, [activeTab, loadWaHistory])
+
+  // Poll every 4s while Riwayat WA is open (guestbook pattern — reliable when Pusher fails).
+  useEffect(() => {
+    if (activeTab !== 'wa-history' || !Number.isFinite(eventId)) return
+
+    let intervalId: number | null = null
+
+    const start = () => {
+      if (intervalId !== null) return
+      intervalId = window.setInterval(() => {
+        void loadWaHistory({ silent: true })
+      }, 4000)
+    }
+
+    const stop = () => {
+      if (intervalId === null) return
+      window.clearInterval(intervalId)
+      intervalId = null
+    }
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        stop()
+        return
+      }
+      void loadWaHistory({ silent: true })
+      start()
+    }
+
+    if (document.visibilityState !== 'hidden') start()
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      stop()
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [activeTab, eventId, loadWaHistory])
+
+  // Pusher/Echo: instant update when a send finishes (same pattern as guestbook).
+  useEffect(() => {
+    if (activeTab !== 'wa-history' || !Number.isFinite(eventId)) return
+    const echo = getEcho()
+    if (!echo) return
+
+    const channelName = `event.${eventId}.invitation-sends`
+    const channel = echo.private(channelName)
+    channel.listen('.invitation.send.updated', () => {
+      void loadWaHistory({ silent: true })
+    })
+
+    return () => {
+      echo.leave(channelName)
+    }
+  }, [activeTab, eventId, loadWaHistory])
 
   function resetGuestForm() {
     setEditing(null)
@@ -807,6 +865,9 @@ export function GuestsPage() {
             >
               {waLoading ? 'Memuat…' : 'Muat ulang'}
             </button>
+            <p className="text-xs text-stone-500">
+              Status diperbarui otomatis (realtime + polling).
+            </p>
           </div>
 
           <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white shadow-sm">

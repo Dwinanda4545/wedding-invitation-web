@@ -1,12 +1,12 @@
 import axios from 'axios'
 import { Html5QrcodeScanner } from 'html5-qrcode'
 import { useEffect, useRef, useState } from 'react'
+import Swal from 'sweetalert2'
 import { useAuth } from '../../context/AuthContext'
 import { api } from '../../lib/api'
 
 type ToastState =
   | { kind: 'idle' }
-  | { kind: 'success'; title: string; subtitle?: string }
   | { kind: 'error'; title: string; subtitle?: string }
 
 type EventOption = { id: number; name: string }
@@ -84,10 +84,14 @@ export function ScannerPage() {
         })
 
         if (data.success) {
-          setToast({
-            kind: 'success',
-            title: data.message,
-            subtitle: data.guest?.name ? `Tamu: ${data.guest.name}` : undefined,
+          setToast({ kind: 'idle' })
+          void Swal.fire({
+            icon: 'success',
+            title: 'Berhasil di-scan',
+            text: data.guest?.name ? `Tamu: ${data.guest.name}` : data.message,
+            timer: 2000,
+            showConfirmButton: false,
+            timerProgressBar: true,
           })
         } else {
           setToast({
@@ -184,15 +188,8 @@ export function ScannerPage() {
         />
       )}
 
-      {toast.kind !== 'idle' ? (
-        <div
-          className={[
-            'rounded-xl border px-4 py-3 text-sm',
-            toast.kind === 'success'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-              : 'border-rose-200 bg-rose-50 text-rose-900',
-          ].join(' ')}
-        >
+      {toast.kind === 'error' ? (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
           <div className="font-semibold">{toast.title}</div>
           {toast.subtitle ? <div className="mt-0.5 opacity-80">{toast.subtitle}</div> : null}
         </div>

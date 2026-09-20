@@ -200,22 +200,18 @@
   animation: inv-scale-in 0.55s ease both;
 }
 
-/* Stagger section entrances after cover open (avoid all animating at t=0). */
-.inv-content.is-revealed > *:nth-child(1) .inv-animate-fade-up,
-.inv-content.is-revealed > *:nth-child(1).inv-animate-fade-up {
-  animation-delay: 0.05s;
+/* Scroll-triggered section text/content (replay when re-entering viewport). */
+.inv-content .inv-animate-fade-up,
+.inv-content .inv-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  animation: none;
+  will-change: opacity, transform;
 }
-.inv-content.is-revealed > *:nth-child(2) .inv-animate-fade-up,
-.inv-content.is-revealed > *:nth-child(2).inv-animate-fade-up {
-  animation-delay: 0.12s;
-}
-.inv-content.is-revealed > *:nth-child(3) .inv-animate-fade-up,
-.inv-content.is-revealed > *:nth-child(3).inv-animate-fade-up {
-  animation-delay: 0.2s;
-}
-.inv-content.is-revealed > *:nth-child(n + 4) .inv-animate-fade-up,
-.inv-content.is-revealed > *:nth-child(n + 4).inv-animate-fade-up {
-  animation-delay: 0.28s;
+
+.inv-content .inv-animate-fade-up.is-visible,
+.inv-content .inv-reveal.is-visible {
+  animation: inv-fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .inv-gallery-placeholder {
@@ -228,8 +224,18 @@
   .inv-animate-fade-up,
   .inv-animate-fade-in,
   .inv-animate-scale-in,
-  .sakura-petal {
+  .inv-content .inv-animate-fade-up,
+  .inv-content .inv-reveal,
+  .sakura-petal,
+  .falling-leaf {
     animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .falling-leaf,
+  .sakura-petal {
+    display: none !important;
   }
 }
 
@@ -356,6 +362,224 @@
   border-radius: 150% 0 150% 0;
   opacity: 0.7;
   animation: sakura-fall linear infinite;
+}
+
+/* Falling leaves — inspired by https://codepen.io/uurrnn/pen/WNLVdN */
+.falling-leaves {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  z-index: 35;
+}
+
+.invitation-shell.is-preview .falling-leaves,
+.falling-leaves.is-preview-embed {
+  position: absolute;
+  inset: 0;
+  z-index: 35;
+}
+
+.falling-leaf {
+  position: absolute;
+  top: -12%;
+  display: block;
+  width: var(--leaf-size, 22px);
+  height: var(--leaf-size, 22px);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--inv-leaf, #be185d) 75%, #fff),
+    var(--inv-leaf, #be185d)
+  );
+  border-radius: 2% 95% 2% 95%;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 14%, transparent);
+  transform-origin: center center;
+  animation-name: falling-leaf-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+.falling-leaf::before {
+  content: '';
+  position: absolute;
+  inset: 18% 42%;
+  background: color-mix(in srgb, #000 22%, transparent);
+  border-radius: 40%;
+  transform: rotate(45deg);
+}
+
+@keyframes falling-leaf-fall {
+  0% {
+    transform: translate3d(0, -10vh, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate3d(var(--leaf-sway, 28px), 25vh, 0) rotate(90deg);
+  }
+  50% {
+    transform: translate3d(calc(var(--leaf-sway, 28px) * -0.7), 55vh, 0) rotate(180deg);
+  }
+  75% {
+    transform: translate3d(calc(var(--leaf-sway, 28px) * 0.45), 80vh, 0) rotate(270deg);
+  }
+  100% {
+    transform: translate3d(0, 115vh, 0) rotate(360deg);
+  }
+}
+
+.falling-leaf.is-rev {
+  animation-name: falling-leaf-fall-rev;
+}
+
+@keyframes falling-leaf-fall-rev {
+  0% {
+    transform: translate3d(0, -10vh, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate3d(calc(var(--leaf-sway, 28px) * -1), 25vh, 0) rotate(-90deg);
+  }
+  50% {
+    transform: translate3d(calc(var(--leaf-sway, 28px) * 0.7), 55vh, 0) rotate(-180deg);
+  }
+  75% {
+    transform: translate3d(calc(var(--leaf-sway, 28px) * -0.45), 80vh, 0) rotate(-270deg);
+  }
+  100% {
+    transform: translate3d(0, 115vh, 0) rotate(-360deg);
+  }
+}
+
+.invitation-shell > .inv-leaves-toggle,
+.inv-leaves-toggle {
+  position: fixed;
+  bottom: 5.25rem;
+  right: 1.5rem;
+  z-index: 40;
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.72;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.inv-leaves-toggle:hover,
+.inv-leaves-toggle.is-on {
+  opacity: 1;
+}
+
+.inv-leaves-toggle.is-on {
+  background: color-mix(in srgb, var(--inv-tag, #be185d) 55%, rgba(0, 0, 0, 0.35));
+}
+
+.inv-leaves-toggle-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  filter: grayscale(0.35);
+}
+
+.inv-leaves-toggle.is-on .inv-leaves-toggle-icon {
+  filter: none;
+}
+
+/* Side characters (Lottie) — below falling leaves (z 35) */
+.side-characters {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 34;
+  overflow: hidden;
+}
+
+.invitation-shell.is-preview .side-characters,
+.side-characters.is-preview-embed {
+  position: absolute;
+  inset: 0;
+  z-index: 34;
+}
+
+.side-characters-slot {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 140px;
+  max-height: 42vh;
+}
+
+.side-characters-slot.is-left {
+  left: 0.25rem;
+}
+
+.side-characters-slot.is-right {
+  right: 0.25rem;
+}
+
+.side-characters-slot.is-right .side-characters-anim {
+  transform: scaleX(-1);
+}
+
+.side-characters-anim {
+  width: 100%;
+  height: auto;
+  max-height: 42vh;
+}
+
+.invitation-shell > .inv-chars-toggle,
+.inv-chars-toggle {
+  position: fixed;
+  bottom: 8.5rem;
+  right: 1.5rem;
+  z-index: 40;
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.72;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.inv-chars-toggle:hover,
+.inv-chars-toggle.is-on {
+  opacity: 1;
+}
+
+.inv-chars-toggle.is-on {
+  background: color-mix(in srgb, var(--inv-tag, #be185d) 55%, rgba(0, 0, 0, 0.35));
+}
+
+.inv-chars-toggle-icon {
+  font-size: 1rem;
+  line-height: 1;
+  filter: grayscale(0.35);
+}
+
+.inv-chars-toggle.is-on .inv-chars-toggle-icon {
+  filter: none;
+}
+
+@media (max-width: 768px) {
+  .side-characters-slot {
+    width: 64px;
+    max-height: 28vh;
+  }
+
+  .side-characters-anim {
+    max-height: 28vh;
+  }
 }
 
 .invitation-shell > .inv-cover,

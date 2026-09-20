@@ -254,6 +254,10 @@ export type InvitationSettings = {
   music_enabled?: boolean
   music_url?: string
   music_volume?: number
+  /** CSS falling leaves overlay (independent of sakura) */
+  falling_leaves_enabled?: boolean
+  /** Fixed left/right idle Lottie characters */
+  side_characters_enabled?: boolean
   sections?: SectionVisibility
   /** Judul & visibility judul untuk section bawaan */
   section_titles?: Partial<Record<BuiltinSectionKey, SectionTitleConfig>>
@@ -424,9 +428,9 @@ export type InvitationEventData = {
 }
 
 export type InvitationGuestData = {
-  id: number
+  id: number | null
   name: string
-  guest_type: string
+  guest_type: string | null
   secret_token?: string
   qr_code_url?: string | null
   is_attended?: boolean
@@ -435,6 +439,8 @@ export type InvitationGuestData = {
 }
 
 export type InvitationResponse = {
+  is_universal?: boolean
+  greeting?: string
   guest: InvitationGuestData
   event: InvitationEventData
 }
@@ -454,6 +460,8 @@ export const DEFAULT_INVITATION_SETTINGS: InvitationSettings = {
   music_enabled: false,
   music_url: '',
   music_volume: 0.6,
+  falling_leaves_enabled: true,
+  side_characters_enabled: false,
   sections: {
     couple: true,
     schedule: true,

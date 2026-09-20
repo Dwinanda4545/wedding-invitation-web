@@ -8,6 +8,7 @@ import {
   type EnvelopePaymentResult,
 } from '../../lib/envelopeTypes'
 import { api, ensureCsrfCookie } from '../../lib/api'
+import { invitationApiBase } from '../../lib/invitationApi'
 import { SectionTitle } from './SectionTitle'
 
 type Props = {
@@ -18,6 +19,7 @@ type Props = {
   tagColor?: string
   title?: string
   showTitle?: boolean
+  isUniversal?: boolean
 }
 
 export function DigitalEnvelopeSection({
@@ -28,6 +30,7 @@ export function DigitalEnvelopeSection({
   tagColor,
   title = 'Amplop Digital',
   showTitle = true,
+  isUniversal = false,
 }: Props) {
   const settings = useMemo(
     () => mergeDigitalEnvelopeSettings(envelopeSettings),
@@ -62,7 +65,7 @@ export function DigitalEnvelopeSection({
     try {
       await ensureCsrfCookie()
       const { data } = await api.post<CreateEnvelopeResponse>(
-        `/api/invitation/${secretToken}/digital-envelopes`,
+        `${invitationApiBase(isUniversal, secretToken)}/digital-envelopes`,
         {
           sender_name: senderName.trim() || guestName,
           sender_email: senderEmail.trim() || null,

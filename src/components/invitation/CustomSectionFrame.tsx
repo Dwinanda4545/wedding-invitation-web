@@ -14,6 +14,7 @@ import {
   type SectionCustomThemeBits,
 } from '../../lib/sectionCustom'
 import { api, ensureCsrfCookie } from '../../lib/api'
+import { invitationApiBase } from '../../lib/invitationApi'
 import type {
   CreateEnvelopeResponse,
   EnvelopePaymentResult,
@@ -137,7 +138,7 @@ export function CustomSectionFrame({
       try {
         await ensureCsrfCookie()
         const { data: res } = await api.post<CreateEnvelopeResponse>(
-          `/api/invitation/${secretToken}/digital-envelopes`,
+          `${invitationApiBase(Boolean(data.is_universal), secretToken)}/digital-envelopes`,
           {
             sender_name: String(body.sender_name ?? data.guest.name ?? '').trim() || data.guest.name,
             sender_email: body.sender_email ?? null,
