@@ -44,8 +44,6 @@ export function GallerySection({
   const [activeIndex, setActiveIndex] = useState(0)
   const [readyIds, setReadyIds] = useState<Set<number>>(() => new Set())
 
-  const mobileHeightPx = Math.max(200, Math.round(slider.height_px * 0.72))
-
   useEffect(() => {
     setReadyIds(new Set())
     setActiveIndex(0)
@@ -76,7 +74,7 @@ export function GallerySection({
     return () => io.disconnect()
   }, [enabled])
 
-  // Stable options — no inView (avoids remount). No focus:'center' (breaks loop + perPage 1).
+  // Same layout options on every viewport (match desktop).
   const options = useMemo<Options>(
     () => ({
       type: slider.type,
@@ -92,15 +90,8 @@ export function GallerySection({
       cover: true,
       speed: 500,
       easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
-      breakpoints: {
-        640: {
-          perPage: 1,
-          gap: `${Math.min(slider.gap_px, 8)}px`,
-          height: `${mobileHeightPx}px`,
-        },
-      },
     }),
-    [slider, mobileHeightPx],
+    [slider],
   )
 
   const syncAutoplay = useCallback(() => {
@@ -123,7 +114,6 @@ export function GallerySection({
     const splide = splideRef.current?.splide
     if (!splide) return
     splide.refresh()
-    // Re-apply integer index without fighting mid-drag transforms.
     const idx = Math.round(splide.index)
     if (Number.isFinite(idx)) {
       splide.go(idx)
@@ -136,9 +126,7 @@ export function GallerySection({
     let timer: number | null = null
     const onResize = () => {
       if (timer != null) window.clearTimeout(timer)
-      timer = window.setTimeout(() => {
-        settleLayout()
-      }, 150)
+      timer = window.setTimeout(() => settleLayout(), 150)
     }
 
     window.addEventListener('resize', onResize)
@@ -162,11 +150,9 @@ export function GallerySection({
     const indices = [activeIndex - 1, activeIndex, activeIndex + 1].filter(
       (i) => i >= 0 && i < images.length,
     )
-    // Always require the active slide; neighbors optional if missing.
     return indices.every((i) => readyIds.has(images[i]!.id))
   }, [images, activeIndex, readyIds])
 
-  // After images paint, refresh once so track width/position is correct on mobile.
   useEffect(() => {
     if (!imagesReady || !nearViewport) return
     const id = window.setTimeout(() => {
@@ -203,7 +189,6 @@ export function GallerySection({
           {
             '--inv-gallery-accent': tagColor ?? '#be185d',
             '--inv-gallery-h': `${slider.height_px}px`,
-            '--inv-gallery-h-mobile': `${mobileHeightPx}px`,
           } as CSSProperties
         }
       >
