@@ -923,6 +923,13 @@
   width: 100%;
 }
 
+.inv-gallery-splide .splide__track {
+  /* Prefer horizontal swipe over page scroll while finger is on the gallery. */
+  touch-action: pan-x;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .inv-gallery-splide .splide__track,
 .inv-gallery-splide .splide__list {
   height: 100%;
@@ -981,6 +988,9 @@
   height: 100%;
   object-fit: cover;
   object-position: center;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 .inv-gallery-slide figcaption {

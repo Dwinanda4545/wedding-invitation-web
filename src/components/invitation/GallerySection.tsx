@@ -75,6 +75,7 @@ export function GallerySection({
   }, [enabled])
 
   // Same layout options on every viewport (match desktop).
+  // Mobile: explicit drag tuning — page scroll often steals horizontal swipes.
   const options = useMemo<Options>(
     () => ({
       type: slider.type,
@@ -88,7 +89,12 @@ export function GallerySection({
       gap: `${slider.gap_px}px`,
       height: `${slider.height_px}px`,
       cover: true,
-      speed: 500,
+      drag: true,
+      waitForTransition: false,
+      dragMinThreshold: { mouse: 0, touch: 4 },
+      flickPower: 650,
+      flickMaxPages: 1,
+      speed: 450,
       easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
     }),
     [slider],
@@ -120,6 +126,12 @@ export function GallerySection({
     }
   }, [])
 
+  const didInitialSettleRef = useRef(false)
+
+  useEffect(() => {
+    didInitialSettleRef.current = false
+  }, [images])
+
   useEffect(() => {
     if (!nearViewport || !enabled) return
 
@@ -145,16 +157,17 @@ export function GallerySection({
     })
   }, [])
 
+  // Spinner only waits on the active slide so lazy neighbors don't block interaction.
   const imagesReady = useMemo(() => {
     if (images.length === 0) return true
-    const indices = [activeIndex - 1, activeIndex, activeIndex + 1].filter(
-      (i) => i >= 0 && i < images.length,
-    )
-    return indices.every((i) => readyIds.has(images[i]!.id))
+    const active = images[activeIndex] ?? images[0]
+    return active ? readyIds.has(active.id) : true
   }, [images, activeIndex, readyIds])
 
+  // Settle layout once after first paint — do not re-go() on every slide change (fights swipe).
   useEffect(() => {
-    if (!imagesReady || !nearViewport) return
+    if (!imagesReady || !nearViewport || didInitialSettleRef.current) return
+    didInitialSettleRef.current = true
     const id = window.setTimeout(() => {
       settleLayout()
       syncAutoplay()
@@ -216,6 +229,7 @@ export function GallerySection({
                     <img
                       src={img.image_url}
                       alt={img.caption ?? 'Galeri'}
+                      draggable={false}
                       loading={index === 0 ? 'eager' : 'lazy'}
                       decoding="async"
                       fetchPriority={index === 0 ? 'high' : 'low'}
