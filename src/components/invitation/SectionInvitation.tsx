@@ -371,6 +371,7 @@ export function SectionInvitation({
                 showTitle={sectionTitle.show}
                 sliderSettings={settings.gallery_slider}
                 enabled={contentMounted}
+                simpleControls={isMobileViewport}
               />
             </div>
           </SectionBackgroundShell>

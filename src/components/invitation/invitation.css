@@ -933,51 +933,91 @@
   height: 100%;
 }
 
-@media (max-width: 768px) {
-  .inv-gallery-splide .splide__track {
-    /* Swipe disabled — keep vertical page scroll comfortable. */
-    touch-action: pan-y;
-  }
+/* Simple mobile gallery (no Splide — avoids CSS-scale canvas bugs). */
+.inv-gallery-simple {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--inv-gallery-radius);
+  background: rgba(0, 0, 0, 0.06);
+}
 
-  .inv-gallery-splide .splide__arrow {
-    width: 2.75rem;
-    height: 2.75rem;
-    opacity: 1;
-    z-index: 4;
-  }
+.inv-gallery-simple .inv-gallery-slide {
+  width: 100%;
+  height: 100%;
+}
 
-  .inv-gallery-splide .splide__arrow svg {
-    width: 1rem;
-    height: 1rem;
-  }
+.inv-gallery-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 5;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--inv-gallery-arrow-bg);
+  color: var(--inv-gallery-arrow-fg);
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
 
-  .inv-gallery-splide .splide__pagination {
-    position: relative;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 0.35rem;
-    margin-top: 0.75rem;
-    padding: 0;
-    bottom: auto;
-    left: auto;
-    transform: none;
-    z-index: 4;
-  }
+.inv-gallery-nav.is-prev {
+  left: 0.5rem;
+}
 
-  .inv-gallery-splide .splide__pagination__page {
-    width: 0.6rem;
-    height: 0.6rem;
-    margin: 0;
-    border: 0;
-    padding: 0;
-    opacity: 1;
-  }
+.inv-gallery-nav.is-next {
+  right: 0.5rem;
+}
 
-  .inv-gallery-splide .splide__pagination__page.is-active {
-    transform: scale(1.2);
-  }
+.inv-gallery-nav:active {
+  transform: translateY(-50%) scale(0.96);
+}
+
+.inv-gallery-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.65rem;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0 2.5rem;
+  pointer-events: none;
+}
+
+.inv-gallery-dot {
+  pointer-events: auto;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--inv-gallery-page);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.inv-gallery-dot.is-active {
+  background: var(--inv-gallery-page-active);
+  transform: scale(1.25);
+}
+
+.inv-gallery-splide.is-simple {
+  overflow: visible;
 }
 
 .inv-gallery-splide[data-theme='default'] {
