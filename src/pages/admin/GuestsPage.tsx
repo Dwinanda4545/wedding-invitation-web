@@ -1,5 +1,12 @@
 import axios from 'axios'
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, ensureCsrfCookie, uploadForm } from '../../lib/api'
 import { getEcho } from '../../lib/echo'
@@ -99,6 +106,32 @@ export function GuestsPage() {
   const [sendMessage, setSendMessage] = useState(DEFAULT_MESSAGE)
   const [sendDeviceId, setSendDeviceId] = useState('')
   const [sending, setSending] = useState(false)
+  const sendMessageRef = useRef<HTMLTextAreaElement>(null)
+
+  function wrapSendMessageFormat(marker: '*' | '_' | '~') {
+    const el = sendMessageRef.current
+    const value = sendMessage
+    if (!el) {
+      setSendMessage(`${marker}${value}${marker}`)
+      return
+    }
+
+    const start = el.selectionStart ?? value.length
+    const end = el.selectionEnd ?? value.length
+    const selected = value.slice(start, end)
+    const next =
+      value.slice(0, start) + marker + selected + marker + value.slice(end)
+    setSendMessage(next)
+
+    const caret = selected.length === 0 ? start + 1 : end + marker.length * 2
+    window.requestAnimationFrame(() => {
+      el.focus()
+      el.setSelectionRange(
+        selected.length === 0 ? start + 1 : start + marker.length,
+        selected.length === 0 ? start + 1 : caret,
+      )
+    })
+  }
 
   const [activeTab, setActiveTab] = useState<PageTab>('guests')
   const [waSummary, setWaSummary] = useState<WaSendSummary | null>(null)
@@ -985,9 +1018,42 @@ export function GuestsPage() {
               <label className="text-xs font-medium text-stone-600">
                 Pesan
               </label>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  title="Bold (*teks*)"
+                  className="inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-stone-200 bg-white px-2 text-sm font-bold text-stone-800 hover:bg-stone-50"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => wrapSendMessageFormat('*')}
+                >
+                  B
+                </button>
+                <button
+                  type="button"
+                  title="Italic (_teks_)"
+                  className="inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-stone-200 bg-white px-2 text-sm italic text-stone-800 hover:bg-stone-50"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => wrapSendMessageFormat('_')}
+                >
+                  I
+                </button>
+                <button
+                  type="button"
+                  title="Strikethrough (~teks~)"
+                  className="inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-800 line-through hover:bg-stone-50"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => wrapSendMessageFormat('~')}
+                >
+                  S
+                </button>
+                <span className="text-[11px] text-stone-500">
+                  Format WhatsApp · underline tidak didukung
+                </span>
+              </div>
               <textarea
-                className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-stone-900 outline-none ring-rose-200 focus:ring-2"
-                rows={4}
+                ref={sendMessageRef}
+                className="mt-2 w-full rounded-lg border border-stone-200 px-3 py-2 text-stone-900 outline-none ring-rose-200 focus:ring-2"
+                rows={6}
                 value={sendMessage}
                 onChange={(e) => setSendMessage(e.target.value)}
                 required
