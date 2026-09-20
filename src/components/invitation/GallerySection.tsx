@@ -124,21 +124,33 @@ export function GallerySection({
     syncAutoplay()
   }, [syncAutoplay])
 
-  // Simple mobile gallery autoplay (no Splide).
+  /**
+   * Simple gallery autoplay: one timeout per slide (not setInterval).
+   * Resets whenever the active slide changes (auto or manual), so prev/next
+   * never races an in-flight tick, and every slide gets a full consistent delay.
+   */
   useEffect(() => {
-    if (!simpleControls || !slider.autoplay || !inView || images.length < 2) {
-      return
-    }
-    const id = window.setInterval(() => {
+    if (!simpleControls || !slider.autoplay || !inView || !imagesReady) return
+    if (images.length < 2) return
+
+    const delayMs = Math.min(
+      15000,
+      Math.max(2500, Number(slider.interval_ms) || 4000),
+    )
+
+    const id = window.setTimeout(() => {
       setActiveIndex((i) => wrapIndex(i + 1, images.length))
-    }, slider.interval_ms)
-    return () => window.clearInterval(id)
+    }, delayMs)
+
+    return () => window.clearTimeout(id)
   }, [
     simpleControls,
     slider.autoplay,
     slider.interval_ms,
     inView,
+    imagesReady,
     images.length,
+    activeIndex,
   ])
 
   const settleLayout = useCallback(() => {
