@@ -830,12 +830,22 @@ export function InvitationContentPage() {
         <Link to="/admin/events" className="text-sm font-medium text-rose-700 hover:text-rose-800">
           ← Kembali ke acara
         </Link>
-        <h1 className="mt-2 font-serif text-2xl font-semibold text-black">
-          Kelola Undangan — {eventName}
-        </h1>
-        <p className="text-sm text-stone-600">
-          Atur tema, HTML, dan semua section undangan (cover, mempelai, jadwal, galeri, RSVP) di satu tempat.
-        </p>
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="font-serif text-2xl font-semibold text-black">
+              Kelola Undangan — {eventName}
+            </h1>
+            <p className="text-sm text-stone-600">
+              Atur tema, HTML, dan semua section undangan (cover, mempelai, jadwal, galeri, RSVP) di satu tempat.
+            </p>
+          </div>
+          <Link
+            to={`/admin/events/${eventId}/wishes`}
+            className="rounded-lg bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-800 hover:bg-sky-100"
+          >
+            Lihat semua ucapan
+          </Link>
+        </div>
       </div>
 
       {toast && (

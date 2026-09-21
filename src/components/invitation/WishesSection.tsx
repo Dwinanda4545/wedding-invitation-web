@@ -159,14 +159,16 @@ export function WishesSection({
           <p className="mb-4 text-center text-xs uppercase tracking-wider opacity-60">
             Doa & Ucapan dari tamu
           </p>
-          {wishes.map((w) => (
-            <div key={w.id} className="inv-wish-card">
-              <p className="text-sm font-semibold" style={{ color: tagColor }}>
-                {w.guest_name}
-              </p>
-              <p className="mt-1 text-sm opacity-85">{w.message}</p>
-            </div>
-          ))}
+          <div className="inv-wish-history max-h-[300px] space-y-0 overflow-y-auto pr-1">
+            {wishes.map((w) => (
+              <div key={w.id} className="inv-wish-card">
+                <p className="text-sm font-semibold" style={{ color: tagColor }}>
+                  {w.guest_name}
+                </p>
+                <p className="mt-1 text-sm opacity-85">{w.message}</p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -793,6 +793,24 @@
   margin-bottom: 0.75rem;
 }
 
+.inv-wish-history {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.45) transparent;
+}
+
+.inv-wish-history::-webkit-scrollbar {
+  width: 6px;
+}
+
+.inv-wish-history::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 9999px;
+}
+
+.inv-wish-history .inv-wish-card:last-child {
+  margin-bottom: 0;
+}
+
 .invitation-shell > .inv-music-control,
 .inv-music-control {
   position: fixed;

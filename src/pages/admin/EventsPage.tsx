@@ -230,6 +230,12 @@ export function EventsPage() {
                     >
                       Amplop
                     </Link>
+                    <Link
+                      to={`/admin/events/${ev.id}/wishes`}
+                      className="rounded-lg bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800 hover:bg-sky-100"
+                    >
+                      Ucapan
+                    </Link>
                     <button
                       type="button"
                       className="rounded-lg border border-stone-200 px-3 py-1 text-xs text-stone-700 hover:bg-stone-50"

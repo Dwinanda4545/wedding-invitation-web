@@ -10,6 +10,7 @@ import { GuestsPage } from './pages/admin/GuestsPage'
 import { GuestbookPage } from './pages/admin/GuestbookPage'
 import { InvitationContentPage } from './pages/admin/InvitationContentPage'
 import { EnvelopeTransactionsPage } from './pages/admin/EnvelopeTransactionsPage'
+import { EventWishesPage } from './pages/admin/EventWishesPage'
 import { ScannerPage } from './pages/admin/ScannerPage'
 import { UsersPage } from './pages/admin/UsersPage'
 import { WhatsappDevicesPage } from './pages/admin/WhatsappDevicesPage'
@@ -49,6 +50,7 @@ export default function App() {
                 <Route path="/admin/events" element={<EventsPage />} />
                 <Route path="/admin/events/:id/invitation" element={<InvitationContentPage />} />
                 <Route path="/admin/events/:id/envelopes" element={<EnvelopeTransactionsPage />} />
+                <Route path="/admin/events/:id/wishes" element={<EventWishesPage />} />
                 <Route path="/admin/events/:id/guests" element={<GuestsPage />} />
                 <Route path="/admin/events/:id/panitia" element={<EventPanitiaPage />} />
                 <Route path="/admin/users" element={<UsersPage />} />
