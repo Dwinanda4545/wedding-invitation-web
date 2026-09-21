@@ -53,7 +53,7 @@ import type {
   InvitationSettings,
   LoveStoryItem,
 } from '../../lib/invitationTypes'
-import { api } from '../../lib/api'
+import { api, ensureCsrfCookie } from '../../lib/api'
 import { toSectionCustomThemeBits } from '../../lib/sectionCustom'
 
 type Tab = 'settings' | 'theme' | 'couple' | 'schedules' | 'stories' | 'gallery' | 'hosts' | 'desain'
