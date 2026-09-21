@@ -236,10 +236,19 @@ export function InvitationContentPage() {
   const [settings, setSettings] = useState<InvitationSettings>(DEFAULT_INVITATION_SETTINGS)
   const [coupleInfo, setCoupleInfo] = useState<CoupleInfo>(DEFAULT_COUPLE_INFO)
   const [hosts, setHosts] = useState<HostsInfo>(DEFAULT_HOSTS)
-  const [universalEnabled, setUniversalEnabled] = useState(false)
-  const [universalGreeting, setUniversalGreeting] = useState('')
-  const [universalUrl, setUniversalUrl] = useState<string | null>(null)
-  const [regeneratingUniversal, setRegeneratingUniversal] = useState(false)
+  const [universalInvites, setUniversalInvites] = useState<
+    Array<{
+      id: number
+      name: string
+      greeting: string | null
+      enabled: boolean
+      sort_order: number
+      url: string
+    }>
+  >([])
+  const [newUniversalName, setNewUniversalName] = useState('')
+  const [newUniversalGreeting, setNewUniversalGreeting] = useState('')
+  const [savingUniversal, setSavingUniversal] = useState(false)
   const [schedules, setSchedules] = useState<EventSchedule[]>([])
   const [stories, setStories] = useState<LoveStoryItem[]>([])
   const [gallery, setGallery] = useState<GalleryImage[]>([])
@@ -355,9 +364,6 @@ export function InvitationContentPage() {
       setSettings(mergeSettings(d.invitation_settings as InvitationSettings))
       setCoupleInfo(mergeCoupleInfo(d.couple_info as CoupleInfo))
       setHosts(mergeHosts(d.hosts as HostsInfo))
-      setUniversalEnabled(Boolean(d.universal_invitation_enabled))
-      setUniversalGreeting(typeof d.universal_greeting === 'string' ? d.universal_greeting : '')
-      setUniversalUrl(typeof d.universal_invitation_url === 'string' ? d.universal_invitation_url : null)
       setSchedules((d.schedules as EventSchedule[]) ?? [])
       setStories((d.love_stories as LoveStoryItem[]) ?? [])
       setGallery((d.gallery as GalleryImage[]) ?? [])
@@ -374,6 +380,9 @@ export function InvitationContentPage() {
   useEffect(() => {
     void load()
     void loadCustomThemes()
+    void loadUniversalInvites().catch(() => {
+      /* ignore until API deployed */
+    })
   }, [load, loadCustomThemes])
 
   function showToast(msg: string) {
@@ -381,23 +390,74 @@ export function InvitationContentPage() {
     window.setTimeout(() => setToast(null), 2500)
   }
 
-  async function regenerateUniversal() {
+  async function loadUniversalInvites() {
     if (!Number.isFinite(eventId)) return
-    setRegeneratingUniversal(true)
+    const { data } = await api.get<{
+      data: Array<{
+        id: number
+        name: string
+        greeting: string | null
+        enabled: boolean
+        sort_order: number
+        url: string
+      }>
+    }>(`/api/events/${eventId}/universal-invitations`)
+    setUniversalInvites(data.data)
+  }
+
+  async function createUniversalInvite(e: FormEvent) {
+    e.preventDefault()
+    if (!Number.isFinite(eventId) || !newUniversalName.trim()) return
+    setSavingUniversal(true)
     setError(null)
     try {
-      const { data } = await api.post<{ data: Record<string, unknown> }>(
-        `/api/events/${eventId}/universal-invitation/regenerate`,
-      )
-      const saved = data.data
-      setUniversalEnabled(Boolean(saved.universal_invitation_enabled))
-      setUniversalGreeting(typeof saved.universal_greeting === 'string' ? saved.universal_greeting : '')
-      setUniversalUrl(typeof saved.universal_invitation_url === 'string' ? saved.universal_invitation_url : null)
-      showToast('Link universal diperbarui. Link lama tidak berlaku.')
+      await api.post(`/api/events/${eventId}/universal-invitations`, {
+        name: newUniversalName.trim(),
+        greeting: newUniversalGreeting.trim() || null,
+      })
+      setNewUniversalName('')
+      setNewUniversalGreeting('')
+      await loadUniversalInvites()
+      showToast('Undangan universal ditambahkan.')
     } catch {
-      setError('Gagal memperbarui link universal.')
+      setError('Gagal menambah undangan universal.')
     } finally {
-      setRegeneratingUniversal(false)
+      setSavingUniversal(false)
+    }
+  }
+
+  async function patchUniversalInvite(
+    id: number,
+    body: Partial<{ name: string; greeting: string | null; enabled: boolean; sort_order: number }>,
+  ) {
+    setError(null)
+    try {
+      await api.patch(`/api/events/${eventId}/universal-invitations/${id}`, body)
+      await loadUniversalInvites()
+    } catch {
+      setError('Gagal memperbarui undangan universal.')
+    }
+  }
+
+  async function regenerateUniversalInvite(id: number) {
+    setError(null)
+    try {
+      await api.post(`/api/events/${eventId}/universal-invitations/${id}/regenerate`)
+      await loadUniversalInvites()
+      showToast('Link diperbarui. Link lama tidak berlaku.')
+    } catch {
+      setError('Gagal regenerate link universal.')
+    }
+  }
+
+  async function deleteUniversalInvite(id: number, name: string) {
+    if (!window.confirm(`Hapus undangan universal "${name}"?`)) return
+    setError(null)
+    try {
+      await api.delete(`/api/events/${eventId}/universal-invitations/${id}`)
+      await loadUniversalInvites()
+    } catch {
+      setError('Gagal menghapus undangan universal.')
     }
   }
 
@@ -408,24 +468,15 @@ export function InvitationContentPage() {
     setError(null)
     try {
       const theme = getInvitationTheme(templateId, null, customThemes)
-      const { data } = await api.put<{ data: Record<string, unknown> }>(
-        `/api/events/${eventId}/invitation`,
-        {
-          invitation_mode: invitationMode,
-          invitation_template: templateId,
-          invitation_style: { theme: theme.id, label: theme.label, ...theme.style },
-          invitation_content: content,
-          couple_info: coupleInfo,
-          invitation_settings: settings,
-          hosts,
-          universal_invitation_enabled: universalEnabled,
-          universal_greeting: universalGreeting.trim() || null,
-        },
-      )
-      const saved = data.data
-      setUniversalEnabled(Boolean(saved.universal_invitation_enabled))
-      setUniversalGreeting(typeof saved.universal_greeting === 'string' ? saved.universal_greeting : '')
-      setUniversalUrl(typeof saved.universal_invitation_url === 'string' ? saved.universal_invitation_url : null)
+      await api.put(`/api/events/${eventId}/invitation`, {
+        invitation_mode: invitationMode,
+        invitation_template: templateId,
+        invitation_style: { theme: theme.id, label: theme.label, ...theme.style },
+        invitation_content: content,
+        couple_info: coupleInfo,
+        invitation_settings: settings,
+        hosts,
+      })
       showToast('Konten undangan disimpan.')
     } catch {
       setError('Gagal menyimpan.')
@@ -876,52 +927,103 @@ export function InvitationContentPage() {
           <div className="rounded-xl border border-stone-200 p-4">
             <h3 className="text-sm font-semibold text-stone-800">Undangan Universal</h3>
             <p className="mt-1 text-xs text-stone-500">
-              Satu link untuk dibagikan ke grup. Tanpa QR dan tidak terikat satu tamu.
+              Banyak link grup (tanpa QR). Tiap item punya nama, sapaan, dan toggle aktif.
+              Link lama (satu per acara) tidak lagi dipakai — buat ulang di sini.
             </p>
-            <label className="mt-3 flex items-center gap-2 text-sm">
+            <form onSubmit={createUniversalInvite} className="mt-3 grid gap-2 md:grid-cols-3">
               <input
-                type="checkbox"
-                checked={universalEnabled}
-                onChange={(e) => setUniversalEnabled(e.target.checked)}
+                className="rounded-lg border border-stone-200 px-3 py-2 text-sm"
+                placeholder="Nama (mis. Grup Keluarga A)"
+                value={newUniversalName}
+                onChange={(e) => setNewUniversalName(e.target.value)}
+                required
               />
-              Aktifkan undangan universal
-            </label>
-            <label className="mt-3 block text-xs font-medium text-stone-600">
-              Sapaan
               <input
-                className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm font-normal text-stone-800"
-                value={universalGreeting}
-                placeholder="Yth. Bapak/Ibu/Saudara/i"
-                onChange={(e) => setUniversalGreeting(e.target.value)}
+                className="rounded-lg border border-stone-200 px-3 py-2 text-sm"
+                placeholder="Sapaan (opsional)"
+                value={newUniversalGreeting}
+                onChange={(e) => setNewUniversalGreeting(e.target.value)}
               />
-            </label>
-            {universalUrl && (
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <input
-                  readOnly
-                  value={universalUrl}
-                  className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-stone-700"
-                />
-                <button
-                  type="button"
-                  className="rounded-lg border border-stone-200 px-3 py-2 text-xs font-medium text-stone-700 hover:bg-stone-50"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(universalUrl)
-                    showToast('Link disalin.')
-                  }}
-                >
-                  Salin
-                </button>
-                <button
-                  type="button"
-                  disabled={regeneratingUniversal}
-                  className="rounded-lg border border-stone-200 px-3 py-2 text-xs font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-60"
-                  onClick={() => void regenerateUniversal()}
-                >
-                  {regeneratingUniversal ? 'Memperbarui…' : 'Regenerate link'}
-                </button>
-              </div>
-            )}
+              <button
+                type="submit"
+                disabled={savingUniversal}
+                className="rounded-lg bg-stone-900 px-3 py-2 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-60"
+              >
+                {savingUniversal ? 'Menyimpan…' : 'Tambah link'}
+              </button>
+            </form>
+            <ul className="mt-4 divide-y divide-stone-100">
+              {universalInvites.length === 0 ? (
+                <li className="py-3 text-sm text-stone-500">Belum ada undangan universal.</li>
+              ) : (
+                universalInvites.map((item) => (
+                  <li key={item.id} className="space-y-2 py-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        className="min-w-[140px] flex-1 rounded-lg border border-stone-200 px-2 py-1 text-sm"
+                        defaultValue={item.name}
+                        onBlur={(e) => {
+                          const name = e.target.value.trim()
+                          if (name && name !== item.name) {
+                            void patchUniversalInvite(item.id, { name })
+                          }
+                        }}
+                      />
+                      <label className="flex items-center gap-1 text-xs text-stone-600">
+                        <input
+                          type="checkbox"
+                          checked={item.enabled}
+                          onChange={(e) =>
+                            void patchUniversalInvite(item.id, { enabled: e.target.checked })
+                          }
+                        />
+                        Aktif
+                      </label>
+                      <button
+                        type="button"
+                        className="rounded-lg border border-stone-200 px-2 py-1 text-xs"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(item.url)
+                          showToast('Link disalin.')
+                        }}
+                      >
+                        Salin
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-lg border border-stone-200 px-2 py-1 text-xs"
+                        onClick={() => void regenerateUniversalInvite(item.id)}
+                      >
+                        Regenerate
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-700"
+                        onClick={() => void deleteUniversalInvite(item.id, item.name)}
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                    <input
+                      className="w-full rounded-lg border border-stone-200 px-2 py-1 text-sm"
+                      defaultValue={item.greeting ?? ''}
+                      placeholder="Yth. Bapak/Ibu/Saudara/i"
+                      onBlur={(e) => {
+                        const greeting = e.target.value.trim() || null
+                        if (greeting !== (item.greeting ?? null)) {
+                          void patchUniversalInvite(item.id, { greeting })
+                        }
+                      }}
+                    />
+                    <input
+                      readOnly
+                      value={item.url}
+                      className="w-full rounded-lg border border-stone-100 bg-stone-50 px-2 py-1 text-xs text-stone-600"
+                    />
+                  </li>
+                ))
+              )}
+            </ul>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
