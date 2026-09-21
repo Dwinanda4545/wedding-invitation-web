@@ -405,12 +405,13 @@ export function InvitationContentPage() {
     setUniversalInvites(data.data)
   }
 
-  async function createUniversalInvite(e: FormEvent) {
-    e.preventDefault()
+  async function createUniversalInvite(e?: FormEvent | { preventDefault?: () => void }) {
+    e?.preventDefault?.()
     if (!Number.isFinite(eventId) || !newUniversalName.trim()) return
     setSavingUniversal(true)
     setError(null)
     try {
+      await ensureCsrfCookie()
       await api.post(`/api/events/${eventId}/universal-invitations`, {
         name: newUniversalName.trim(),
         greeting: newUniversalGreeting.trim() || null,
@@ -930,28 +931,40 @@ export function InvitationContentPage() {
               Banyak link grup (tanpa QR). Tiap item punya nama, sapaan, dan toggle aktif.
               Link lama (satu per acara) tidak lagi dipakai — buat ulang di sini.
             </p>
-            <form onSubmit={createUniversalInvite} className="mt-3 grid gap-2 md:grid-cols-3">
+            <div className="mt-3 grid gap-2 md:grid-cols-3">
               <input
                 className="rounded-lg border border-stone-200 px-3 py-2 text-sm"
                 placeholder="Nama (mis. Grup Keluarga A)"
                 value={newUniversalName}
                 onChange={(e) => setNewUniversalName(e.target.value)}
-                required
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    void createUniversalInvite(e as unknown as FormEvent)
+                  }
+                }}
               />
               <input
                 className="rounded-lg border border-stone-200 px-3 py-2 text-sm"
                 placeholder="Sapaan (opsional)"
                 value={newUniversalGreeting}
                 onChange={(e) => setNewUniversalGreeting(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    void createUniversalInvite(e as unknown as FormEvent)
+                  }
+                }}
               />
               <button
-                type="submit"
-                disabled={savingUniversal}
+                type="button"
+                disabled={savingUniversal || !newUniversalName.trim()}
                 className="rounded-lg bg-stone-900 px-3 py-2 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-60"
+                onClick={(e) => void createUniversalInvite(e as unknown as FormEvent)}
               >
                 {savingUniversal ? 'Menyimpan…' : 'Tambah link'}
               </button>
-            </form>
+            </div>
             <ul className="mt-4 divide-y divide-stone-100">
               {universalInvites.length === 0 ? (
                 <li className="py-3 text-sm text-stone-500">Belum ada undangan universal.</li>
