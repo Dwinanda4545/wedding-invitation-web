@@ -5,8 +5,8 @@ import { useAuth } from '../context/AuthContext'
 export function LoginPage() {
   const { user, login, isAdmin } = useAuth()
   const navigate = useNavigate()
-  const [email, setEmail] = useState('admin@example.com')
-  const [password, setPassword] = useState('password')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
